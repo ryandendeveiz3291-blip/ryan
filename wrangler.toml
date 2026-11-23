@@ -1,0 +1,13 @@
+name = "frontier-owner-auth"
+main = "worker/index.mjs"
+compatibility_date = "2026-11-23"
+workers_dev = true
+
+[[ratelimits]]
+name = "LOGIN_LIMITER"
+# This ID must be unique among rate-limit bindings in your Cloudflare account.
+namespace_id = "7864219301"
+
+  [ratelimits.simple]
+  limit = 5
+  period = 60

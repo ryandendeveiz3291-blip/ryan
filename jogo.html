@@ -208,7 +208,7 @@ body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Ari
   <p>Clique em qualquer lugar fora da caixinha acima pra jogar</p>
   <p style="color:#ffd700;">Tela não sumiu depois de clicar? Pressione <b>ENTER</b> pra forçar o início</p>
   <p>WASD = Andar | MOUSE = Olhar | ESPAÇO = Pular | SHIFT = Correr | M = Minimapa | ESC = Fechar menus</p>
-  <p>E = Interagir | Q = Hub | Encontre os portais brilhantes e o Santuário para ganhar recompensas!</p>
+  <p>E = Interagir | Q = Hub | L = Ranks | Encontre os portais brilhantes e o Santuário para ganhar recompensas!</p>
   <p>I = Inventário | O = Vender itens | U = Loja de Upgrades | F = Amigos e Save | X = Jogadores online</p>
   <p style="max-width:420px; color:#67e8f9;">👥 Multiplayer: aperte <b>X</b> para ver quem está online. Seu nome e seu rank aparecem em cima da cabeça para os outros jogadores.</p>
   <p style="max-width:420px;">Existe uma mina de pedra escura em um canto do mapa — entre nela pra minerar minérios, que valem bem mais dinheiro que os blocos normais!</p>
@@ -230,7 +230,7 @@ body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Ari
   Itens coletados: <span id="score">0</span><br>
   Dinheiro: <span class="money">$<span id="moneyHud">0</span></span>
 </div>
-<div id="panelHint">I = Inventário<br>O = Vender<br>U = Upgrades<br>F = Amigos/Save<br>X = Online<br><span id="lastSaveHud" style="opacity:.6;font-size:11px;">ainda não salvou</span></div>
+<div id="panelHint">I = Inventário<br>O = Vender<br>U = Upgrades<br>F = Amigos/Save<br>X = Online<br>L = Ranks<br><span id="lastSaveHud" style="opacity:.6;font-size:11px;">ainda não salvou</span></div>
 <div id="pickupMsg"></div>
 <div id="saleMsg"></div>
 
@@ -244,7 +244,7 @@ body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Ari
 <div id="compass">N　NE　E　SE　S　SW　W　NW</div>
 <div id="minimap"><canvas id="mapCanvas" width="300" height="300"></canvas></div>
 <div id="staminaWrap"><div id="staminaLabel">ENERGIA</div><div id="staminaBar"><div id="staminaFill"></div></div></div>
-<div id="worldInfo">WASD · SHIFT CORRER · ESPAÇO PULAR · I/O/U/F/X MENUS</div>
+<div id="worldInfo">WASD · SHIFT CORRER · ESPAÇO PULAR · I/O/U/F/X/L MENUS</div>
 <div id="toastStack"></div>
 <div id="quickControls" aria-label="Controles rápidos">
   <button id="mapToggleBtn" class="quickBtn" title="Mostrar ou esconder minimapa" aria-label="Alternar minimapa">🗺️</button>
@@ -344,6 +344,10 @@ body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Ari
 #ultimateOverlay{position:fixed;inset:0;z-index:45;background:rgba(2,5,10,.72);backdrop-filter:blur(7px);display:none;align-items:center;justify-content:center;padding:18px}
 .ultModal{width:min(760px,94vw);max-height:86vh;overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:20px;background:linear-gradient(180deg,rgba(9,14,24,.98),rgba(4,8,14,.98));box-shadow:0 30px 100px rgba(0,0,0,.55);padding:22px;color:#fff;font-family:system-ui}
 .ultModal h2{margin:0 0 5px;font-size:24px}.ultSub{opacity:.6;font-size:11px;margin-bottom:16px}.ultGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ultCard{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);border-radius:14px;padding:13px}.ultCard b{font-size:13px}.ultCard span{display:block;margin-top:4px;opacity:.7;font-size:11px}.ultActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.ultBtn{border:0;border-radius:10px;padding:9px 12px;background:linear-gradient(135deg,#22d3ee,#6366f1);color:#fff;font-weight:800;cursor:pointer}.ultBtn.alt{background:rgba(255,255,255,.08)}
+.ultModal .ownerAuthForm{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.ultModal .ownerAuthForm input{flex:1;min-width:190px;padding:10px 12px;border:1px solid rgba(255,255,255,.14);border-radius:9px;background:rgba(255,255,255,.06);color:#fff}
+.ultModal .ownerAuthForm input:focus{outline:2px solid rgba(34,211,238,.5)}
+.ownerAuthStatus{min-height:18px;margin-top:8px;color:#cbd5e1;font-size:12px}
 #weatherFx{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:0;transition:opacity .8s}
 #screenVignette{position:fixed;inset:0;z-index:6;pointer-events:none;box-shadow:inset 0 0 140px rgba(0,0,0,.36)}
 .achievementToast{position:fixed;left:50%;bottom:18%;transform:translate(-50%,20px);z-index:60;padding:11px 16px;border-radius:14px;background:rgba(5,10,18,.92);border:1px solid rgba(250,204,21,.35);color:#fff;font:700 12px system-ui;opacity:0;transition:.35s;pointer-events:none}
@@ -2312,6 +2316,8 @@ function animate(){
   const achToast=(msg)=>{const e=$('achievementToast');if(!e)return;e.textContent='🏆 '+msg;e.style.opacity='1';e.style.transform='translate(-50%,0)';clearTimeout(e._t);e._t=setTimeout(()=>{e.style.opacity='0';e.style.transform='translate(-50%,20px)'},2800)};
 
   const MAX_PLAYER_LEVEL=100;
+  const OWNER_AUTH_API='https://frontier-owner-auth.YOUR_ACCOUNT_SUBDOMAIN.workers.dev';
+  const OWNER_AUTH_CONFIGURED=!OWNER_AUTH_API.includes('YOUR_ACCOUNT_SUBDOMAIN');
   function xpNeed(l){return Math.round(100*Math.pow(1.18,Math.max(0,l-1)));}
   function addXP(n){
     const boost=(typeof XPBOOST_LEVELS!=='undefined' && XPBOOST_LEVELS[xpBoostLevel-1]) ? XPBOOST_LEVELS[xpBoostLevel-1].multiplier : 1;
@@ -2544,8 +2550,93 @@ function animate(){
     $('hardResetBtn').onclick=()=>{if(confirm('Resetar apenas XP, missões, eventos e conquistas?')){state.xp=0;state.level=1;state.combo=1;state.achievements=[];state.quest=null;newQuest();save();openUltimatePanel()}};
   }
 
-  // Keybinds Q = hub, B = achievements/hub, M = map quick view, E = guide.
-  const keys=(e)=>{if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))return; if(e.code==='Escape'&&$('ultimateOverlay').style.display==='flex')closeModal(); if(e.repeat)return; if(e.code==='KeyQ'){e.preventDefault();if(!activePanel)openUltimatePanel()} if(e.code==='KeyV'&&!activePanel&&typeof yawObject!=='undefined'){const force=7*DASH_LEVELS[dashLevel-1].multiplier;velocity.x+=-Math.sin(yawObject.rotation.y)*force;velocity.z+=-Math.cos(yawObject.rotation.y)*force;toast('💨 DASH!');} if(e.code==='KeyE'){interact()} if(e.code==='KeyB'){e.preventDefault();if(!activePanel)openUltimatePanel()} if(e.code==='KeyM'&&!activePanel){e.preventDefault();const map=$('minimap');if(map){const hidden=map.style.display==='none';map.style.display=hidden?'block':'none';toast(hidden?'🗺️ Minimapa exibido':'🗺️ Minimapa escondido')}} };
+  let ownerAuthenticated=false;
+  let ownerSessionExpiresAt=0;
+  let ownerSessionToken='';
+  function renderRanksPanel(statusMessage=''){
+    const ranks=FRONTIER_HOOKS.getRanks?FRONTIER_HOOKS.getRanks():[];
+    const currentRank=FRONTIER_HOOKS.getRankForLevel?FRONTIER_HOOKS.getRankForLevel(state.level):{name:'Iniciante'};
+    const rankCards=ranks.map(rank=>`<div class="ultCard" style="border-left:3px solid ${rank.color}"><b>${rank.name}${rank.name===currentRank.name?' · SEU RANK':''}</b><span>Nível ${rank.level}+</span></div>`).join('');
+    const ownerCard=ownerAuthenticated
+      ? '<div class="ultCard" style="border-left:3px solid #ffd84d"><b>👑 Dono · autenticado</b><span>Válido neste navegador até '+new Date(ownerSessionExpiresAt).toLocaleTimeString('pt-BR')+'.</span></div>'
+      : '<div class="ultCard" style="border-left:3px solid #64748b"><b>🔒 Dono · protegido</b><span>Autenticação verificada pelo Cloudflare Worker. Esse título é local e não concede poderes no multiplayer.</span></div>';
+    const loginForm=ownerAuthenticated
+      ? '<button class="ultBtn alt" id="ownerLogoutBtn" type="button">Sair do rank Dono</button>'
+      : `<form class="ownerAuthForm" id="ownerLoginForm"><input id="ownerPasswordInput" type="password" minlength="24" maxlength="128" autocomplete="current-password" aria-label="Senha de Dono" placeholder="Senha privada (mínimo 24 caracteres)" ${OWNER_AUTH_CONFIGURED?'required':''} ${OWNER_AUTH_CONFIGURED?'':'disabled'}><button class="ultBtn" id="ownerLoginBtn" type="submit" ${OWNER_AUTH_CONFIGURED?'':'disabled'}>Entrar como Dono</button></form>`;
+    openModal('RANKS DA FRONTEIRA',`<div class="ultSub">Seu nível libera ranks. O rank Dono usa autenticação no servidor, não uma senha escondida no HTML.</div><div class="ultGrid">${rankCards}${ownerCard}</div>${loginForm}<div class="ownerAuthStatus" id="ownerAuthStatus" role="status" aria-live="polite"></div>`);
+    const status=$('ownerAuthStatus');
+    status.textContent=statusMessage||(!OWNER_AUTH_CONFIGURED?'Autenticação pendente: publique o Worker e configure a URL pública no código do jogo.':'');
+    const form=$('ownerLoginForm');
+    if(form)form.addEventListener('submit',submitOwnerLogin);
+    const logout=$('ownerLogoutBtn');
+    if(logout)logout.addEventListener('click',()=>{
+      ownerSessionToken='';ownerAuthenticated=false;ownerSessionExpiresAt=0;
+      renderRanksPanel('Você saiu do rank Dono.');
+    });
+  }
+  async function submitOwnerLogin(event){
+    event.preventDefault();
+    const status=$('ownerAuthStatus'),input=$('ownerPasswordInput'),button=$('ownerLoginBtn');
+    if(!status||!input||!button)return;
+    const password=input.value;input.value='';
+    if(password.length<24){status.textContent='Use uma senha longa, exclusiva e configurada como segredo no Cloudflare.';return}
+    button.disabled=true;status.textContent='Verificando com o servidor...';
+    try{
+      const response=await fetch(OWNER_AUTH_API+'/api/login',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({password})
+      });
+      if(response.status===401)throw new Error('Senha incorreta.');
+      if(response.status===429)throw new Error('Muitas tentativas. Aguarde um minuto e tente novamente.');
+      if(response.status===503)throw new Error('O Worker ainda não está configurado com um segredo forte.');
+      if(!response.ok)throw new Error('Não foi possível autenticar agora. Tente novamente.');
+      const result=await response.json();
+      if(typeof result.token!=='string'||!Number.isFinite(result.expiresAt))throw new Error('Resposta inválida do servidor.');
+      ownerSessionToken=result.token;
+      ownerAuthenticated=true;ownerSessionExpiresAt=result.expiresAt;
+      if($('ownerAuthStatus')===status)renderRanksPanel('Autenticado como Dono neste navegador.');
+    }catch(error){
+      status.textContent=error instanceof Error?error.message:'Falha ao autenticar.';
+    }finally{
+      if(button.isConnected)button.disabled=false;
+    }
+  }
+  async function refreshOwnerSession(token,status){
+    try{
+      const response=await fetch(OWNER_AUTH_API+'/api/session',{headers:{Authorization:'Bearer '+token}});
+      if(response.status===401){
+        ownerSessionToken='';ownerAuthenticated=false;ownerSessionExpiresAt=0;
+        if($('ownerAuthStatus')===status)status.textContent='Sua sessão expirou. Entre de novo para ver o rank Dono.';
+        return;
+      }
+      if(!response.ok)throw new Error('O servidor não conseguiu validar sua sessão.');
+      const result=await response.json();
+      if(result.authenticated!==true||result.role!=='owner'||!Number.isFinite(result.expiresAt))throw new Error('Resposta inválida do servidor.');
+      ownerAuthenticated=true;ownerSessionExpiresAt=result.expiresAt;
+      if($('ownerAuthStatus')===status)renderRanksPanel('Sessão do rank Dono validada pelo servidor.');
+    }catch(error){
+      ownerAuthenticated=false;
+      if($('ownerAuthStatus')===status)status.textContent=error instanceof Error?error.message:'Falha ao validar a sessão.';
+    }
+  }
+  function openRanksPanel(){
+    ownerAuthenticated=false;ownerSessionExpiresAt=0;renderRanksPanel();
+    const token=ownerSessionToken,status=$('ownerAuthStatus');
+    if(token&&OWNER_AUTH_CONFIGURED){status.textContent='Verificando sua sessão...';void refreshOwnerSession(token,status)}
+  }
+
+  // Keybinds Q = hub, L = ranks, B = achievements/hub, M = map quick view, E = guide.
+  const keys=(e)=>{
+    if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))return;
+    if(e.code==='Escape'&&$('ultimateOverlay').style.display==='flex')closeModal();
+    if(e.repeat)return;
+    if(e.code==='KeyQ'){e.preventDefault();if(!activePanel)openUltimatePanel()}
+    if(e.code==='KeyL'){e.preventDefault();if(!activePanel)openRanksPanel()}
+    if(e.code==='KeyV'&&!activePanel&&typeof yawObject!=='undefined'){const force=7*DASH_LEVELS[dashLevel-1].multiplier;velocity.x+=-Math.sin(yawObject.rotation.y)*force;velocity.z+=-Math.cos(yawObject.rotation.y)*force;toast('💨 DASH!')}
+    if(e.code==='KeyE')interact();
+    if(e.code==='KeyB'){e.preventDefault();if(!activePanel)openUltimatePanel()}
+    if(e.code==='KeyM'&&!activePanel){e.preventDefault();const map=$('minimap');if(map){const hidden=map.style.display==='none';map.style.display=hidden?'block':'none';toast(hidden?'🗺️ Minimapa exibido':'🗺️ Minimapa escondido')}}
+  };
   document.addEventListener('keydown',keys);
 
   // Gentle rain visual using a transparent CSS repeating gradient.
@@ -2605,6 +2696,8 @@ function animate(){
     for(const x of RANKS){ if(lv >= x[0]) r = x; }
     return { name:r[1], color:r[2] };
   }
+  FRONTIER_HOOKS.getRanks = () => RANKS.map(([level,name,color]) => ({level,name,color}));
+  FRONTIER_HOOKS.getRankForLevel = level => rankFor(level);
   const myLevel = () => (FRONTIER_HOOKS.getXPState ? lvOf(FRONTIER_HOOKS.getXPState().level) : 1);
   function zoneCode(){
     if(!yawObject) return 'campo';
