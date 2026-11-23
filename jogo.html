@@ -1,0 +1,2819 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>⚡ FRONTIER // First Person Adventure</title>
+<style>
+  html, body { margin:0; padding:0; overflow:hidden; background:#000; font-family: Arial, sans-serif; }
+  canvas { display:block; }
+  #crosshair {
+    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:6px; height:6px; border-radius:50%; background:#fff;
+    box-shadow:0 0 4px #000; pointer-events:none; z-index:10;
+  }
+  #hint {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.85); color:#fff; display:flex;
+    align-items:center; justify-content:center; flex-direction:column;
+    text-align:center; z-index:30; cursor:pointer; overflow-y:auto; padding:20px; box-sizing:border-box;
+  }
+  #hint h1 { margin-bottom:10px; }
+  #hint p { margin:4px 0; opacity:.85; }
+  .legend { display:flex; gap:14px; margin-top:14px; flex-wrap:wrap; justify-content:center; }
+  .legend span { display:flex; align-items:center; gap:6px; font-size:13px; }
+  .swatch { width:12px; height:12px; display:inline-block; border-radius:2px; }
+  #hud {
+    position:fixed; bottom:10px; left:10px; color:#fff; z-index:10;
+    font-size:14px; text-shadow:0 0 4px #000; opacity:.9; line-height:1.6;
+  }
+  #hud .money { color:#ffd700; font-weight:bold; white-space:nowrap; }
+  .moneyLine { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #moneyHud, #moneyShop, #moneyUpg { white-space:nowrap; }
+  #hud .nm { color:#4aa8ff; font-weight:bold; }
+  #panelHint {
+    position:fixed; bottom:10px; right:10px; color:#fff; z-index:10;
+    font-size:13px; text-shadow:0 0 4px #000; opacity:.75; text-align:right; line-height:1.5;
+  }
+  #pickupMsg {
+    position:fixed; top:16%; left:50%; transform:translate(-50%,0);
+    z-index:15; font-size:20px; font-weight:bold; text-shadow:0 0 6px #000;
+    opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;
+  }
+  #saleMsg {
+    position:fixed; top:22%; left:50%; transform:translate(-50%,0);
+    z-index:15; font-size:18px; font-weight:bold; color:#ffd700; text-shadow:0 0 6px #000;
+    opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;
+  }
+  .panel {
+    position:fixed; top:0; right:0; width:340px; height:100%;
+    background:rgba(15,15,20,0.95); color:#fff; z-index:40;
+    transform:translateX(100%); transition:transform .25s;
+    padding:20px; box-sizing:border-box; overflow-y:auto;
+    display:none;
+  }
+  .panel.open { transform:translateX(0); display:block; }
+  .panel h2 { margin-top:0; border-bottom:1px solid #444; padding-bottom:8px; }
+  .panel h3 { font-size:14px; color:#4aa8ff; margin:18px 0 8px; }
+  .panel .closeHint { font-size:12px; opacity:.6; margin-bottom:14px; }
+  .panel .note { font-size:12px; opacity:.65; line-height:1.5; background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; margin-bottom:12px; }
+  .panelItem {
+    display:flex; align-items:center; gap:10px; padding:8px;
+    margin-bottom:6px; border-radius:6px; background:rgba(255,255,255,0.05);
+    border-left:4px solid #888;
+  }
+  .panelItem .ic { width:22px; height:22px; border-radius:4px; flex-shrink:0; }
+  .panelItem .info { display:flex; flex-direction:column; flex:1; }
+  .panelItem .nm { font-size:14px; font-weight:bold; }
+  .panelItem .rar { font-size:11px; opacity:.75; }
+  .panelItem .sellBtn {
+    background:#ffd700; color:#222; border:none; border-radius:5px;
+    padding:6px 10px; font-size:12px; font-weight:bold; cursor:pointer;
+    white-space:nowrap;
+  }
+  .panelItem .sellBtn:hover { background:#ffe650; }
+  .panelItem .sellBtn:disabled { background:#666; color:#999; cursor:not-allowed; }
+  #panelEmptyInv, #panelEmptyShop { opacity:.6; font-size:13px; margin-top:10px; }
+  .moneyLine { font-size:15px; margin-bottom:14px; color:#ffd700; }
+  .rowInput { display:flex; gap:6px; margin-bottom:10px; }
+  .rowInput input[type=text] { flex:1; padding:8px; border-radius:5px; border:none; }
+  .fullBtn {
+    width:100%; padding:9px; border-radius:6px; border:none; background:#4aa8ff;
+    color:#fff; font-weight:bold; cursor:pointer; margin-bottom:8px;
+  }
+  .fullBtn:hover { background:#66baff; }
+  .friendRow { display:flex; justify-content:space-between; align-items:center; padding:6px 8px; background:rgba(255,255,255,0.05); border-radius:5px; margin-bottom:5px; }
+  .friendRow button { background:#dd3333; border:none; color:#fff; border-radius:4px; padding:3px 8px; cursor:pointer; font-size:11px; }
+
+/* ===== POLISHED UI OVERRIDE ===== */
+:root{
+  --glass:rgba(8,12,20,.72); --glass2:rgba(14,20,32,.9);
+  --line:rgba(255,255,255,.12); --cyan:#22d3ee; --gold:#ffd84d;
+  --green:#5cff9d; --danger:#ff5d73; --purple:#a855f7;
+}
+*{box-sizing:border-box}
+body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#05070b}
+#crosshair{width:18px;height:18px;background:transparent;border:1px solid rgba(255,255,255,.85);border-radius:50%;box-shadow:0 0 12px rgba(34,211,238,.45)}
+#crosshair:before,#crosshair:after{content:"";position:absolute;background:#fff;box-shadow:0 0 6px #000}
+#crosshair:before{width:2px;height:24px;left:7px;top:-4px}
+#crosshair:after{width:24px;height:2px;left:-4px;top:7px}
+#hint{
+  background:radial-gradient(circle at 50% 35%,rgba(24,48,72,.78),rgba(2,5,10,.98) 65%);
+  backdrop-filter:blur(12px); cursor:default; padding:30px;
+}
+#hint:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(135deg,rgba(34,211,238,.08),transparent 35%,rgba(168,85,247,.08))}
+#hint>*{position:relative;z-index:1}
+#hint h1{font-size:clamp(34px,6vw,68px);letter-spacing:-2px;margin:0 0 6px;text-shadow:0 0 30px rgba(34,211,238,.25)}
+#hint h1:after{content:"";display:block;height:3px;width:100px;margin:12px auto 20px;background:linear-gradient(90deg,var(--cyan),var(--purple));border-radius:99px}
+#hint p{font-size:14px;color:#cbd5e1;margin:6px 0}
+#hint .noPointerLock input{background:rgba(255,255,255,.08)!important;color:#fff;border:1px solid var(--line)!important;outline:none}
+#hint .noPointerLock button{background:linear-gradient(135deg,#ffd84d,#ffb300)!important;box-shadow:0 8px 25px rgba(255,190,0,.18)}
+.legend{margin-top:18px;gap:8px}
+.legend span{padding:7px 10px;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:999px}
+
+#hud{
+  left:18px;bottom:18px;font-size:13px;line-height:1.7;padding:13px 16px;
+  background:linear-gradient(135deg,rgba(5,10,18,.78),rgba(8,14,24,.48));
+  border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(10px);
+  min-width:190px;box-shadow:0 12px 35px rgba(0,0,0,.22)
+}
+#hud:before{content:"STATUS";display:block;font-size:9px;letter-spacing:2px;color:#64748b;margin-bottom:3px}
+#hud .money{font-size:16px}
+#panelHint{
+  right:18px;bottom:18px;padding:11px 14px;border:1px solid var(--line);border-radius:12px;
+  background:rgba(5,10,18,.62);backdrop-filter:blur(10px);font-size:11px;line-height:1.8
+}
+#panelHint b{color:#fff}
+#pickupMsg,#saleMsg{
+  top:18%;padding:11px 18px;border-radius:999px;background:rgba(5,10,18,.78);
+  border:1px solid var(--line);backdrop-filter:blur(8px)
+}
+.panel{
+  width:min(410px,94vw);background:linear-gradient(180deg,rgba(9,14,24,.97),rgba(5,9,16,.97));
+  border-left:1px solid rgba(255,255,255,.12);box-shadow:-25px 0 70px rgba(0,0,0,.45);padding:24px
+}
+.panel.open{display:block}
+.panel h2{font-size:25px;letter-spacing:-.5px;border:0;padding:0;margin-bottom:4px}
+.panel h2:after{content:"";display:block;width:55px;height:3px;margin-top:9px;border-radius:99px;background:linear-gradient(90deg,var(--cyan),var(--purple))}
+.panel h3{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#67e8f9;margin-top:22px}
+.panel .closeHint{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.03)}
+.panel .note{border:1px solid var(--line);background:rgba(255,255,255,.035);border-radius:10px}
+.panelItem{
+  min-height:58px;margin-bottom:8px;border:1px solid rgba(255,255,255,.06);border-left:4px solid #888!important;
+  background:linear-gradient(90deg,rgba(255,255,255,.055),rgba(255,255,255,.025));
+  transition:transform .15s,border-color .15s,background .15s
+}
+.panelItem:hover{transform:translateX(-3px);background:rgba(255,255,255,.075)}
+.panelItem .ic{box-shadow:0 0 14px currentColor}
+.panelItem .nm{font-size:13px}
+.sellBtn,.fullBtn{transition:transform .15s,filter .15s}
+.sellBtn:hover,.fullBtn:hover{transform:translateY(-1px);filter:brightness(1.08)}
+.fullBtn{background:linear-gradient(135deg,#38bdf8,#6366f1)!important;box-shadow:0 7px 20px rgba(59,130,246,.16)}
+.rowInput input[type=text]{background:rgba(255,255,255,.06);color:#fff;border:1px solid var(--line)!important;outline:none}
+#worldInfo,#compass,#minimap,#staminaWrap,#toastStack,#topStats{position:fixed;z-index:12;pointer-events:none}
+#topStats{top:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
+.statPill{padding:7px 11px;border:1px solid var(--line);background:rgba(5,10,18,.58);backdrop-filter:blur(8px);border-radius:999px;font-size:11px;color:#dbeafe;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+.statPill strong{color:#fff}.fpsPill strong{color:#5cff9d}.fpsPill{min-width:72px;justify-content:center}
+#compass{top:16px;left:50%;transform:translateX(-50%);margin-top:38px;font-size:10px;letter-spacing:4px;color:rgba(255,255,255,.72);text-shadow:0 2px 6px #000}
+#minimap{top:16px;right:18px;width:150px;height:150px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.16);background:rgba(2,5,10,.72);box-shadow:0 14px 40px rgba(0,0,0,.28)}
+#mapCanvas{width:100%;height:100%}
+#staminaWrap{left:18px;bottom:118px;width:190px}
+#staminaLabel{font-size:9px;letter-spacing:1px;color:#cbd5e1;margin-bottom:4px}
+#staminaBar{height:7px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden;border:1px solid rgba(255,255,255,.08)}
+#staminaFill{height:100%;width:100%;background:linear-gradient(90deg,#22d3ee,#5cff9d);border-radius:99px;transition:width .08s}
+#worldInfo{left:50%;bottom:22px;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,.45);letter-spacing:1px}
+#quickControls{position:fixed;top:16px;left:16px;z-index:17;display:flex;gap:7px}
+.quickBtn{width:38px;height:38px;border:1px solid var(--line);border-radius:10px;background:rgba(5,10,18,.68);color:#fff;font-size:16px;cursor:pointer;backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(0,0,0,.18);transition:.15s}
+.quickBtn:hover{border-color:rgba(34,211,238,.55);background:rgba(15,23,42,.86);transform:translateY(-1px)}
+#touchControls{display:none}
+.touchPad{position:fixed;left:18px;bottom:150px;z-index:20;width:150px;height:150px;user-select:none;touch-action:none}
+.touchBtn{position:absolute;width:48px;height:48px;border-radius:16px;border:1px solid rgba(255,255,255,.16);background:rgba(5,10,18,.72);color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.touchBtn[data-touch="forward"]{left:51px;top:0}.touchBtn[data-touch="left"]{left:0;top:51px}.touchBtn[data-touch="right"]{right:0;top:51px}.touchBtn[data-touch="back"]{left:51px;bottom:0}
+.touchActions{position:fixed;right:18px;bottom:145px;z-index:20;display:flex;align-items:flex-end;gap:10px;touch-action:none}
+.touchAction{width:58px;height:58px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(5,10,18,.72);color:#fff;font-size:13px;font-weight:800;backdrop-filter:blur(8px)}
+.touchAction.jump{width:76px;height:76px;background:linear-gradient(135deg,rgba(34,211,238,.5),rgba(99,102,241,.5))}
+@media(pointer:coarse){.touchControlsActive #touchControls{display:block}}
+
+/* ===== ACTION BAR ===== */
+.actionBar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 14px}
+.actionBar .actionBtn{border:none;border-radius:9px;padding:10px 12px;color:#fff;font-weight:800;font-size:12px;cursor:pointer;transition:transform .15s,filter .15s,box-shadow .15s}
+.actionBar .actionBtn:hover{transform:translateY(-1px);filter:brightness(1.08)}
+.actionBar .sellAllBtn{background:linear-gradient(135deg,#f59e0b,#ef4444);box-shadow:0 8px 22px rgba(239,68,68,.18)}
+.actionBar .maxAllBtn{background:linear-gradient(135deg,#22c55e,#06b6d4);box-shadow:0 8px 22px rgba(34,197,94,.18)}
+.upgToolbar{display:grid;grid-template-columns:1fr;gap:8px;margin:8px 0 16px}
+.maxCatBtn{width:100%;border:1px solid rgba(34,211,238,.25);background:linear-gradient(135deg,rgba(34,211,238,.12),rgba(168,85,247,.12));color:#e0f2fe;border-radius:9px;padding:9px 10px;font-size:11px;font-weight:800;cursor:pointer}
+.maxCatBtn:hover{background:linear-gradient(135deg,rgba(34,211,238,.2),rgba(168,85,247,.2))}
+.actionMeta{font-size:10px;opacity:.58;line-height:1.45;margin:-4px 0 10px}
+
+@media(max-width:700px){
+ #minimap{width:110px;height:110px}.panel{width:100vw}.statPill:nth-child(n+3){display:none}
+ #staminaWrap{bottom:108px}.panelHint{display:none}
+ #worldInfo{display:none}#questCard{top:62px}.touchControlsActive #touchControls{display:block}
+ #quickControls{top:10px;left:10px}.ultPill:first-child{margin-left:48px}
+}
+
+</style>
+</head>
+<body>
+
+<div id="hint">
+  <h1>Jogo em Primeira Pessoa</h1>
+
+  <div style="font-size:11px;letter-spacing:2px;color:#67e8f9;margin-bottom:12px;">FRONTIER // OFFLINE SURVIVAL</div>
+  <div class="noPointerLock" style="display:flex; gap:6px; justify-content:center; margin:10px 0;">
+    <input id="nameInput" type="text" maxlength="20" placeholder="Seu nome" style="padding:8px; border-radius:5px; border:none; width:170px;">
+    <button id="saveNameBtn" style="padding:8px 12px; border-radius:5px; border:none; background:#ffd700; font-weight:bold; cursor:pointer;">Salvar nome</button>
+  </div>
+
+  <p>Clique em qualquer lugar fora da caixinha acima pra jogar</p>
+  <p style="color:#ffd700;">Tela não sumiu depois de clicar? Pressione <b>ENTER</b> pra forçar o início</p>
+  <p>WASD = Andar | MOUSE = Olhar | ESPAÇO = Pular | SHIFT = Correr | M = Minimapa | ESC = Fechar menus</p>
+  <p>E = Interagir | Q = Hub | Encontre os portais brilhantes e o Santuário para ganhar recompensas!</p>
+  <p>I = Inventário | O = Vender itens | U = Loja de Upgrades | F = Amigos e Save | X = Jogadores online</p>
+  <p style="max-width:420px; color:#67e8f9;">👥 Multiplayer: aperte <b>X</b> para ver quem está online. Seu nome e seu rank aparecem em cima da cabeça para os outros jogadores.</p>
+  <p style="max-width:420px;">Existe uma mina de pedra escura em um canto do mapa — entre nela pra minerar minérios, que valem bem mais dinheiro que os blocos normais!</p>
+  <p style="max-width:420px; color:#ffdf69;">💀 ENDGAME HÍPER: novos upgrades custam mais de 100 duotrigintilhões!<br></p><p style="max-width:420px; color:#33cc99;">Novo: a Loja de Upgrades (U) — 100 níveis agora tem Velocidade, Sorte, Comerciante e Minerador Veloz — e tem bônus de dinheiro por jogar todo dia seguido!</p>
+  <p style="max-width:420px; color:#8855ff;">Torre de Parkour (canto sudeste, roxa): muito difícil, os upgrades de Velocidade e Pulo NÃO funcionam lá dentro. Chegue no topo pra pegar $1000 — depois de pegar, só reaparece 10 minutos depois.</p>
+  <p style="max-width:420px; color:#ffffff;"><b>⛏️ Novos minérios:</b> Cristal, Celestial, Abismo e Eterno — cada um mais raro e valioso que o anterior.</p>
+  <div class="legend">
+    <span><i class="swatch" style="background:#ffdd33"></i>Comum</span>
+    <span><i class="swatch" style="background:#33dd55"></i>Médio</span>
+    <span><i class="swatch" style="background:#dd2222"></i>Difícil</span>
+    <span><i class="swatch" style="background:#a020f0"></i>Quase impossível</span>
+    <span><i class="swatch" style="background:#0d0d0d; border:1px solid #22ffee;"></i>Preto (super raro)</span>
+    <span><i class="swatch" style="background:#9aa0a6; box-shadow:none;"></i>Cinza (mítico)</span>
+  </div>
+</div>
+<div id="crosshair"></div>
+<div id="hud">
+  Jogador: <span class="nm" id="nameHud">Jogador</span><br>
+  Itens coletados: <span id="score">0</span><br>
+  Dinheiro: <span class="money">$<span id="moneyHud">0</span></span>
+</div>
+<div id="panelHint">I = Inventário<br>O = Vender<br>U = Upgrades<br>F = Amigos/Save<br>X = Online<br><span id="lastSaveHud" style="opacity:.6;font-size:11px;">ainda não salvou</span></div>
+<div id="pickupMsg"></div>
+<div id="saleMsg"></div>
+
+<div id="topStats">
+  <div class="statPill">📍 <strong id="zoneHud">CAMPO</strong></div>
+  <div class="statPill">👥 <strong id="onlineHud">1</strong></div>
+  <div class="statPill">⚡ <strong id="speedHud">100%</strong></div>
+  <div class="statPill">🎯 <strong id="rarityHud">—</strong></div>
+  <div class="statPill fpsPill">🖥️ <strong>FPS <span id="fpsHud">0</span></strong></div>
+</div>
+<div id="compass">N　NE　E　SE　S　SW　W　NW</div>
+<div id="minimap"><canvas id="mapCanvas" width="300" height="300"></canvas></div>
+<div id="staminaWrap"><div id="staminaLabel">ENERGIA</div><div id="staminaBar"><div id="staminaFill"></div></div></div>
+<div id="worldInfo">WASD · SHIFT CORRER · ESPAÇO PULAR · I/O/U/F/X MENUS</div>
+<div id="toastStack"></div>
+<div id="quickControls" aria-label="Controles rápidos">
+  <button id="mapToggleBtn" class="quickBtn" title="Mostrar ou esconder minimapa" aria-label="Alternar minimapa">🗺️</button>
+  <button id="fullscreenBtn" class="quickBtn" title="Tela cheia" aria-label="Alternar tela cheia">⛶</button>
+</div>
+<div id="touchControls">
+  <div class="touchPad" aria-label="Movimento">
+    <button class="touchBtn" data-touch="forward" aria-label="Andar para frente">▲</button>
+    <button class="touchBtn" data-touch="left" aria-label="Andar para esquerda">◀</button>
+    <button class="touchBtn" data-touch="right" aria-label="Andar para direita">▶</button>
+    <button class="touchBtn" data-touch="back" aria-label="Andar para trás">▼</button>
+  </div>
+  <div class="touchActions" aria-label="Ações">
+    <button class="touchAction" data-touch="sprint" aria-label="Correr">COR</button>
+    <button class="touchAction" data-touch="interact" aria-label="Interagir">USAR</button>
+    <button class="touchAction jump" data-touch="jump" aria-label="Pular">PULAR</button>
+  </div>
+</div>
+
+
+<div id="inventory" class="panel">
+  <h2>Inventário</h2>
+  <div class="closeHint">Pressione I para fechar</div>
+  <div id="invList"></div>
+  <div id="panelEmptyInv">Nenhum item ainda. Vá colete alguns blocos ou minere na mina!</div>
+</div>
+
+<div id="shop" class="panel">
+  <h2>Vender Itens</h2>
+  <div class="closeHint">Pressione O para fechar</div>
+  <div class="moneyLine">Seu dinheiro: $<span id="moneyShop">0</span></div>
+  <div class="actionBar">
+    <button class="actionBtn sellAllBtn" id="sellAllBtn">💰 VENDER TUDO</button>
+  </div>
+  <div class="actionMeta" id="sellAllMeta">Calculando valor total...</div>
+  <div id="shopList"></div>
+  <div id="panelEmptyShop">Nada pra vender. Colete itens primeiro!</div>
+</div>
+
+<div id="upgrades" class="panel">
+  <h2>Loja de Upgrades</h2>
+  <div class="closeHint">Pressione U para fechar • 100 níveis</div>
+  <div class="moneyLine">Seu dinheiro: $<span id="moneyUpg">0</span></div><div class="note" style="border-left:3px solid #ffcc00">⚠️ <b>Máximo possível</b> gasta apenas o que cabe no seu saldo. Nível 100 só será atingido quando houver dinheiro suficiente. A compra agora pode ser desfeita uma vez.</div>
+  <div class="actionBar">
+    <button class="actionBtn maxAllBtn" id="maxAllUpgradesBtn">⚡ COMPRAR O MÁXIMO POSSÍVEL</button><button class="actionBtn" id="undoUpgradeBtn" style="background:#6b7280">↩️ DESFAZER ÚLTIMA COMPRA</button>
+  </div>
+  <div class="actionMeta">Compra automaticamente todos os próximos níveis que você conseguir pagar, até chegar no limite de cada upgrade.</div>
+  <div id="upgList"></div>
+</div>
+
+<div id="friends" class="panel">
+  <h2>Amigos e Save</h2>
+  <div class="closeHint">Pressione F para fechar</div>
+
+  <div class="note">
+    ⚠️ Esse jogo roda sozinho no seu navegador, sem internet — não dá pra ver o amigo
+    andando ao vivo junto com você (isso exigiria um servidor online). O que dá pra
+    fazer aqui é <b>salvar seu progresso</b> e <b>comparar</b> com o save de um amigo.
+  </div>
+
+  <h3>Seu progresso</h3>
+  <button class="fullBtn" id="exportBtn">⬇ Baixar meu save (.json)</button>
+  <button class="fullBtn" id="importBtn" style="background:#33aa55;">⬆ Carregar meu save (.json)</button>
+  <input type="file" id="importInput" accept="application/json" style="display:none">
+  <div class="note">Dica: o arquivo baixado vai pra pasta Downloads — pode mover ele pra
+  Documentos se quiser guardar lá. Leve esse .json com você pra continuar em outro PC.</div>
+
+  <h3>Lista de amigos (anotação)</h3>
+  <div class="rowInput">
+    <input type="text" id="friendNameInput" maxlength="24" placeholder="Nome do amigo">
+    <button class="sellBtn" id="addFriendBtn">+</button>
+  </div>
+  <div id="friendsList"></div>
+
+  <h3>Comparar progresso com um amigo</h3>
+  <button class="fullBtn" id="friendImportBtn" style="background:#a0522d;">Importar save de um amigo</button>
+  <input type="file" id="friendImportInput" accept="application/json" style="display:none">
+  <div id="friendCompare"></div>
+</div>
+
+
+<div id="online" class="panel">
+  <h2>Jogadores online</h2>
+  <div class="closeHint">Pressione X para fechar</div>
+  <div class="note" id="onlineStatus">Conectando...</div>
+  <div id="onlineList"></div>
+</div>
+
+<style id="frontier-ultimate-css">
+#ultimateBar{position:fixed;top:12px;left:16px;z-index:16;display:flex;gap:8px;align-items:center;pointer-events:none}
+.ultPill{pointer-events:auto;display:flex;align-items:center;gap:7px;padding:8px 11px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(5,10,18,.68);backdrop-filter:blur(10px);box-shadow:0 8px 26px rgba(0,0,0,.2);font:11px system-ui;color:#dbeafe}
+.ultPill strong{color:#fff}.ultPill .xp{width:90px;height:6px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden}.ultPill .xp i{display:block;height:100%;width:0;background:linear-gradient(90deg,#67e8f9,#8b5cf6);border-radius:99px}
+#questCard{position:fixed;top:86px;left:16px;width:250px;z-index:16;padding:13px 14px;border:1px solid rgba(255,255,255,.1);border-radius:14px;background:rgba(5,10,18,.68);backdrop-filter:blur(10px);box-shadow:0 12px 34px rgba(0,0,0,.22);font:12px system-ui;color:#cbd5e1}
+#questCard .qTitle{font-weight:800;color:#fff;margin-bottom:6px}.qLine{display:flex;justify-content:space-between;gap:10px;margin-top:5px}.qBar{height:5px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden;margin-top:7px}.qBar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#fbbf24,#f97316)}
+#eventBanner{position:fixed;top:20%;left:50%;transform:translate(-50%,-20px);z-index:25;padding:13px 20px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(5,10,18,.82);backdrop-filter:blur(12px);font:700 13px system-ui;color:#fff;opacity:0;pointer-events:none;transition:.35s;box-shadow:0 15px 50px rgba(0,0,0,.35)}
+#interactionHint{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);z-index:16;padding:9px 13px;border-radius:11px;border:1px solid rgba(255,255,255,.11);background:rgba(5,10,18,.64);backdrop-filter:blur(10px);font:11px system-ui;color:#e2e8f0;opacity:0;transition:.2s;pointer-events:none}
+#ultimateOverlay{position:fixed;inset:0;z-index:45;background:rgba(2,5,10,.72);backdrop-filter:blur(7px);display:none;align-items:center;justify-content:center;padding:18px}
+.ultModal{width:min(760px,94vw);max-height:86vh;overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:20px;background:linear-gradient(180deg,rgba(9,14,24,.98),rgba(4,8,14,.98));box-shadow:0 30px 100px rgba(0,0,0,.55);padding:22px;color:#fff;font-family:system-ui}
+.ultModal h2{margin:0 0 5px;font-size:24px}.ultSub{opacity:.6;font-size:11px;margin-bottom:16px}.ultGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ultCard{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);border-radius:14px;padding:13px}.ultCard b{font-size:13px}.ultCard span{display:block;margin-top:4px;opacity:.7;font-size:11px}.ultActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.ultBtn{border:0;border-radius:10px;padding:9px 12px;background:linear-gradient(135deg,#22d3ee,#6366f1);color:#fff;font-weight:800;cursor:pointer}.ultBtn.alt{background:rgba(255,255,255,.08)}
+#weatherFx{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:0;transition:opacity .8s}
+#screenVignette{position:fixed;inset:0;z-index:6;pointer-events:none;box-shadow:inset 0 0 140px rgba(0,0,0,.36)}
+.achievementToast{position:fixed;left:50%;bottom:18%;transform:translate(-50%,20px);z-index:60;padding:11px 16px;border-radius:14px;background:rgba(5,10,18,.92);border:1px solid rgba(250,204,21,.35);color:#fff;font:700 12px system-ui;opacity:0;transition:.35s;pointer-events:none}
+@media(max-width:760px){#questCard{width:210px}.ultGrid{grid-template-columns:1fr}.ultPill:nth-child(n+3){display:none}}
+</style>
+
+<div id="ultimateBar">
+  <div class="ultPill">⭐ <strong id="ultLevel">Nv. 1</strong></div>
+  <div class="ultPill">XP <div class="xp"><i id="ultXpFill"></i></div><span id="ultXpText">0/100</span></div>
+  <div class="ultPill">🔥 <strong id="ultCombo">x1.0</strong></div>
+  <div class="ultPill">🌦️ <strong id="ultWeather">Limpo</strong></div>
+</div>
+<div id="questCard">
+  <div class="qTitle">🎯 MISSÃO ATUAL <span style="float:right;opacity:.5">Q</span></div>
+  <div id="questName">Carregue o mundo...</div>
+  <div class="qLine"><span id="questProgress">0 / 1</span><span id="questReward">+$0 XP</span></div>
+  <div class="qBar"><i id="questBarFill"></i></div>
+</div>
+<div id="eventBanner"></div>
+<div id="interactionHint">E — interagir</div>
+<div id="ultimateOverlay"><div class="ultModal" id="ultModal"></div></div>
+<div id="weatherFx"></div><div id="screenVignette"></div><div class="achievementToast" id="achievementToast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+const FRONTIER_HOOKS = {};
+
+// Declared before init()/animate() so ore pickup hooks can safely access it.
+let countedOrePickups = 0;
+let scene, camera, renderer, clock;
+let moveForward=false, moveBackward=false, moveLeft=false, moveRight=false, canJump=false, running=false;
+let velocity = new THREE.Vector3();
+let direction = new THREE.Vector3();
+let forwardVec = new THREE.Vector3(0,0,-1);
+let rightVec = new THREE.Vector3(1,0,0);
+let pitchObject, yawObject;
+let crates = [];
+let ores = [];
+let platforms = [];
+let parkourTrophy = null;
+let score = 0;
+let money = 0;
+let inventory = [];
+let friends = [];
+let playerName = 'Jogador';
+let activePanel = null; // null | 'inventory' | 'shop' | 'upgrades' | 'friends'
+let speedLevel = 1;   // 1 a 20
+let luckLevel = 1;
+let sellLevel = 1;
+let respawnLevel = 1;
+let jumpLevel = 1;
+let pickupLevel = 1;
+let visionLevel = 1;
+let luckyLevel = 1;
+let multiLevel = 1;
+let dailyBonusLevel = 1;
+let mineBonusLevel = 1;
+let greenHunterLevel = 1;
+let dailyStreak = 0;
+let lastLoginDate = null;
+let parkourCooldownUntil = 0;
+
+// Performance counters must exist before init()/animate() can run.
+const PERF = {
+  hudAt:0, miniAt:0, compassAt:0, mineCullAt:0,
+  hudMs:120, miniMs:120, compassMs:80,
+  lowPower:false
+};
+
+
+const hint = document.getElementById('hint');
+const scoreEl = document.getElementById('score');
+const moneyHudEl = document.getElementById('moneyHud');
+const moneyShopEl = document.getElementById('moneyShop');
+const moneyUpgEl = document.getElementById('moneyUpg');
+const nameHudEl = document.getElementById('nameHud');
+const nameInput = document.getElementById('nameInput');
+const saveNameBtn = document.getElementById('saveNameBtn');
+const invEl = document.getElementById('inventory');
+const invListEl = document.getElementById('invList');
+const panelEmptyInvEl = document.getElementById('panelEmptyInv');
+const shopEl = document.getElementById('shop');
+const shopListEl = document.getElementById('shopList');
+const panelEmptyShopEl = document.getElementById('panelEmptyShop');
+const upgEl = document.getElementById('upgrades');
+const upgListEl = document.getElementById('upgList');
+const friendsEl = document.getElementById('friends');
+const onlinePanelEl = document.getElementById('online');
+const friendsListEl = document.getElementById('friendsList');
+const friendNameInput = document.getElementById('friendNameInput');
+const friendCompareEl = document.getElementById('friendCompare');
+const pickupMsgEl = document.getElementById('pickupMsg');
+const saleMsgEl = document.getElementById('saleMsg');
+const sellAllBtn = document.getElementById('sellAllBtn');
+const sellAllMetaEl = document.getElementById('sellAllMeta');
+const maxAllUpgradesBtn = document.getElementById('maxAllUpgradesBtn');
+
+// ---- Sistema de raridade (usado pelos blocos e pelos minérios) ----
+const RARITY_ORDER = ['comum', 'medio', 'dificil', 'impossivel', 'preto'];
+const ORE_RARITY_ORDER = [
+  'comum','medio','dificil','impossivel','preto','verde',
+  'cristal','celestial','abismo','eterno'
+];
+const RARITIES = {
+  comum:      { label:'Comum',              color:0xffdd33, glow:0xffdd33, hex:'#ffdd33', weight:90  },
+  medio:      { label:'Médio',              color:0x33dd55, glow:0x33dd55, hex:'#33dd55', weight:40  },
+  dificil:    { label:'Difícil',            color:0xdd2222, glow:0xdd2222, hex:'#dd2222', weight:10  },
+  impossivel: { label:'Quase impossível',   color:0xa020f0, glow:0xa020f0, hex:'#a020f0', weight:1   },
+  preto:      { label:'Preto (lendário)',   color:0x0d0d0d, glow:0x22ffee, hex:'#0d0d0d', weight:0.5 },
+  verde:      { label:'Cinza (mítico)',     color:0xd8dde2, glow:0xffffff, hex:'#d8dde2', weight:0.02 },
+  cristal:    { label:'Cristal (ultra raro)', color:0x66e6ff, glow:0x66e6ff, hex:'#66e6ff', weight:0.006 },
+  celestial:  { label:'Celestial (absurdo)',  color:0xffe08a, glow:0xffc400, hex:'#ffe08a', weight:0.002 },
+  abismo:     { label:'Abismo (quase impossível)', color:0xb38cff, glow:0x7c3aed, hex:'#b38cff', weight:0.0006 },
+  eterno:     { label:'Eterno (1 em milhões)', color:0xffffff, glow:0xffffff, hex:'#ffffff', weight:0.0001 }
+};
+
+const ITEM_POOL = {
+  comum: [
+    { name:'Moeda de Cobre', power:1, price:5 },
+    { name:'Pedra Comum', power:1, price:4 },
+    { name:'Graveto', power:1, price:2 },
+    { name:'Pano Velho', power:1, price:3 }
+  ],
+  medio: [
+    { name:'Espada de Ferro', power:3, price:25 },
+    { name:'Escudo de Bronze', power:3, price:22 },
+    { name:'Poção de Cura', power:3, price:18 },
+    { name:'Bota Reforçada', power:3, price:20 }
+  ],
+  dificil: [
+    { name:'Espada Rúnica', power:7, price:90 },
+    { name:'Armadura de Aço Élfico', power:7, price:100 },
+    { name:'Amuleto de Fogo', power:7, price:85 },
+    { name:'Arco Sombrio', power:7, price:95 }
+  ],
+  impossivel: [
+    { name:'Coroa do Rei Ancestral', power:15, price:500 },
+    { name:'Espada Lendária Dracônica', power:15, price:600 },
+    { name:'Núcleo de Estrela', power:15, price:550 },
+    { name:'Relíquia do Vazio', power:15, price:700 }
+  ],
+  preto: [
+    { name:'Lâmina do Vazio Absoluto', power:30, price:4000 },
+    { name:'Coroa do Rei Sombrio', power:30, price:4500 },
+    { name:'Fragmento da Escuridão Eterna', power:30, price:5000 },
+    { name:'Coração da Singularidade', power:30, price:5500 }
+  ]
+};
+
+const ORE_POOL = {
+  comum: [
+    { name:'Carvão', power:1, price:15 },
+    { name:'Minério de Ferro', power:1, price:18 },
+    { name:'Minério de Cobre', power:1, price:14 },
+    { name:'Minério de Estanho', power:1, price:16 }
+  ],
+  medio: [
+    { name:'Minério de Prata', power:3, price:70 },
+    { name:'Cristal Azul', power:3, price:80 },
+    { name:'Minério de Níquel', power:3, price:65 },
+    { name:'Quartzo Raro', power:3, price:75 }
+  ],
+  dificil: [
+    { name:'Ouro Puro', power:7, price:280 },
+    { name:'Platina Bruta', power:7, price:320 },
+    { name:'Cristal Vermelho', power:7, price:300 },
+    { name:'Fragmento de Meteoro', power:7, price:310 }
+  ],
+  impossivel: [
+    { name:'Diamante Cósmico', power:15, price:1800 },
+    { name:'Núcleo de Vulcão', power:15, price:2000 },
+    { name:'Coração de Dragão', power:15, price:2200 },
+    { name:'Cristal do Big Bang', power:15, price:2500 }
+  ],
+  preto: [
+    { name:'Minério do Abismo', power:30, price:6000 },
+    { name:'Núcleo de Buraco Negro', power:30, price:7000 },
+    { name:'Cristal da Nulidade', power:30, price:6500 },
+    { name:'Fragmento do Fim dos Tempos', power:30, price:8000 }
+  ],
+  verde: [
+    { name:'Minério Cinza Prime', power:60, price:50000 },
+    { name:'Núcleo Prateado Celestial', power:60, price:65000 },
+    { name:'Cristal da Nebulosa Prateada', power:60, price:80000 },
+    { name:'Fragmento do Coração Primordial', power:60, price:100000 }
+  ],
+  cristal: [
+    { name:'Cristal do Trovão', power:90, price:500000 },
+    { name:'Minério Prismático', power:90, price:650000 },
+    { name:'Núcleo de Safira Estelar', power:90, price:800000 },
+    { name:'Fragmento de Luz Pura', power:90, price:1000000 }
+  ],
+  celestial: [
+    { name:'Ouro Celestial', power:130, price:6000000 },
+    { name:'Núcleo Solar', power:130, price:8500000 },
+    { name:'Cristal da Aurora', power:130, price:11000000 },
+    { name:'Fragmento de Cometa Dourado', power:130, price:14000000 }
+  ],
+  abismo: [
+    { name:'Minério do Abismo Eterno', power:200, price:120000000 },
+    { name:'Núcleo da Fenda', power:200, price:160000000 },
+    { name:'Cristal da Singularidade', power:200, price:220000000 },
+    { name:'Fragmento da Noite Absoluta', power:200, price:300000000 }
+  ],
+  eterno: [
+    { name:'Minério do Infinito', power:500, price:10000000000 },
+    { name:'Núcleo Eterno', power:500, price:15000000000 },
+    { name:'Cristal do Fim', power:500, price:25000000000 },
+    { name:'Fragmento da Origem', power:500, price:50000000000 }
+  ]
+};
+
+
+// deixa números grandes legíveis (100000000000 -> "100 bi") — necessário porque
+// os upgrades agora custam na casa dos bilhões/trilhões
+function formatMoney(n){
+  const num = Number(n);
+  if(!Number.isFinite(num)) return num === Infinity ? '∞' : '0';
+  const sign = num < 0 ? '-' : '';
+  const value = Math.abs(num);
+
+  // Evita que números absurdamente grandes estourem o HUD.
+  // Cada unidade representa 10^3 a mais que a anterior.
+  const units = [
+    [1e300,'Ce'],[1e297,'NoV'],[1e294,'OcV'],[1e291,'SpV'],[1e288,'SxV'],[1e285,'QiV'],[1e282,'QdV'],[1e279,'UdV'],[1e276,'DdV'],[1e273,'TdV'],
+    [1e270,'Vg'],[1e267,'Nv'],[1e264,'Ov'],[1e261,'Spg'],[1e258,'Sxg'],[1e255,'Qig'],[1e252,'Qdg'],[1e249,'Udg'],[1e246,'Ddg'],[1e243,'Tdg'],
+    [1e240,'Ctg'],[1e237,'Dtg'],[1e234,'Vtg'],[1e231,'Ntg'],[1e228,'Otg'],[1e225,'Stg'],[1e222,'Sxtg'],[1e219,'Qitg'],[1e216,'Qdtg'],[1e213,'Udtg'],
+    [1e210,'Dutg'],[1e207,'Ttg'],[1e204,'Ctq'],[1e201,'Dtq'],[1e198,'Vq'],[1e195,'Nq'],[1e192,'Oq'],[1e189,'Sq'],[1e186,'Sxq'],[1e183,'Qiq'],
+    [1e180,'Qdq'],[1e177,'Udq'],[1e174,'Ddq'],[1e171,'Tdq'],[1e168,'Cq'],[1e165,'Dq'],[1e162,'Vqg'],[1e159,'Nqg'],[1e156,'Oqg'],[1e153,'Sqg'],
+    [1e150,'Sxqg'],[1e147,'Qiqg'],[1e144,'Qdqg'],[1e141,'Udqg'],[1e138,'Ddqg'],[1e135,'Tdqg'],[1e132,'Cqg'],[1e129,'Dqg'],[1e126,'Vgq'],[1e123,'Ngq'],
+    [1e120,'Ogq'],[1e117,'Sgq'],[1e114,'Sxgq'],[1e111,'Qigq'],[1e108,'Qdgq'],[1e105,'Udgq'],[1e102,'trestrig'],[1e101,'100-Duotrig'],[1e99,'Duotrig'],[1e96,'Cgq'],[1e93,'Dgq'],
+    [1e90,'Vgq2'],[1e87,'Ngq2'],[1e84,'Ogq2'],[1e81,'Sgq2'],[1e78,'Sxgq2'],[1e75,'Qigq2'],[1e72,'Qdgq2'],[1e69,'Udgq2'],[1e66,'Ddgq2'],[1e63,'Tdgq2'],
+    [1e60,'Cgq2'],[1e57,'Dgq2'],[1e54,'Vgq3'],[1e51,'Ngq3'],[1e48,'Ogq3'],[1e45,'Sgq3'],[1e42,'Sxgq3'],[1e39,'Qigq3'],[1e36,'Qdgq3'],[1e33,'Udgq3'],[1e30,'No'],
+    [1e27,'Oc'],[1e24,'Sp'],[1e21,'Sx'],[1e18,'Qi'],[1e15,'Qd'],[1e12,'tri'],[1e9,'bi'],[1e6,'mi'],[1e3,'mil']
+  ];
+
+  for(const [base,label] of units){
+    if(value >= base){
+      const scaled = value / base;
+      const decimals = scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2;
+      return sign + scaled.toLocaleString('pt-BR',{minimumFractionDigits:0, maximumFractionDigits:decimals}) + ' ' + label;
+    }
+  }
+  return sign + Math.round(value).toLocaleString('pt-BR');
+}
+
+function rollRarity(){
+  // a sorte aumenta o peso das raridades melhores (comum não muda);
+  // o Caçador de Preto dá um empurrão extra só pro peso do Preto
+  const luckMult = LUCK_LEVELS[luckLevel-1].multiplier;
+  const blackMult = BLACK_LEVELS[blackLevel-1].multiplier;
+  const effWeight = k => {
+    if(k === 'comum') return RARITIES[k].weight;
+    if(k === 'preto') return RARITIES[k].weight * luckMult * blackMult;
+    return RARITIES[k].weight * luckMult;
+  };
+  const totalWeight = RARITY_ORDER.reduce((s,k)=>s+effWeight(k),0);
+  let r = Math.random()*totalWeight;
+  for(const k of RARITY_ORDER){
+    if(r < effWeight(k)) return k;
+    r -= effWeight(k);
+  }
+  return 'comum';
+}
+function rollItem(rarityKey){ return ITEM_POOL[rarityKey][Math.floor(Math.random()*ITEM_POOL[rarityKey].length)]; }
+function rollOre(rarityKey){ return ORE_POOL[rarityKey][Math.floor(Math.random()*ORE_POOL[rarityKey].length)]; }
+
+function rollOreRarity(){
+  const luckMult = LUCK_LEVELS[Math.max(0, Math.min(LUCK_LEVELS.length-1, luckLevel-1))].multiplier;
+  const blackMult = BLACK_LEVELS[Math.max(0, Math.min(BLACK_LEVELS.length-1, blackLevel-1))].multiplier;
+  const greenMult = GREEN_LEVELS[Math.max(0, Math.min(GREEN_LEVELS.length-1, greenHunterLevel-1))].multiplier;
+  const oreRarityMult = ORE_RARITY_LUCK_LEVELS[Math.max(0, Math.min(499, oreRarityLevel-1))].multiplier;
+  const hyperRareMult = HYPER_RARE_LEVELS[Math.max(0, Math.min(99, hyperRareLevel-1))].multiplier;
+  const eff = k => {
+    if(k === 'comum') return RARITIES[k].weight;
+    if(k === 'preto') return RARITIES[k].weight * luckMult * blackMult * oreRarityMult * hyperRareMult;
+    if(k === 'verde') return RARITIES[k].weight * luckMult * greenMult * oreRarityMult * hyperRareMult;
+    // Sorte do Mineiro fortalece todas as raridades de minério acima de Comum.
+    return RARITIES[k].weight * luckMult * oreRarityMult * hyperRareMult;
+  };
+  const total = ORE_RARITY_ORDER.reduce((sum,k)=>sum+eff(k),0);
+  let r = Math.random()*total;
+  for(const k of ORE_RARITY_ORDER){ const w=eff(k); if(r<w) return k; r-=w; }
+  return 'comum';
+}
+
+// ---- Loja de upgrades: 100 níveis nas categorias principais + Sorte do Mineiro até 500 ----
+// preço cresce em progressão pra sempre ter mais uma coisa pra juntar dinheiro e comprar
+function buildMultLevels(n, step, basePrice, growth){
+  const arr = [];
+  for(let i=1;i<=n;i++){
+    arr.push({ level:i, multiplier: +(1+(i-1)*step).toFixed(3), price: i===1?0:Math.round(basePrice*Math.pow(growth,i-2)) });
+  }
+  return arr;
+}
+function buildTimeFactorLevels(n, step, minFactor, basePrice, growth){
+  const arr = [];
+  for(let i=1;i<=n;i++){
+    arr.push({ level:i, timeFactor: Math.max(minFactor, +(1-(i-1)*step).toFixed(3)), price: i===1?0:Math.round(basePrice*Math.pow(growth,i-2)) });
+  }
+  return arr;
+}
+function buildRadiusLevels(n, baseVal, step, basePrice, growth){
+  const arr = [];
+  for(let i=1;i<=n;i++){
+    arr.push({ level:i, radius: +(baseVal+(i-1)*step).toFixed(2), price: i===1?0:Math.round(basePrice*Math.pow(growth,i-2)) });
+  }
+  return arr;
+}
+function buildDistLevels(n, baseVal, step, basePrice, growth){
+  const arr = [];
+  for(let i=1;i<=n;i++){
+    arr.push({ level:i, dist: Math.round(baseVal+(i-1)*step), price: i===1?0:Math.round(basePrice*Math.pow(growth,i-2)) });
+  }
+  return arr;
+}
+function buildChanceLevels(n, step, basePrice, growth){
+  const arr = [];
+  for(let i=1;i<=n;i++){
+    arr.push({ level:i, chance: +((i-1)*step).toFixed(3), price: i===1?0:Math.round(basePrice*Math.pow(growth,i-2)) });
+  }
+  return arr;
+}
+
+const LVL_COUNT = 100;
+const GROWTH = 1.72; // 100 níveis; os níveis altos ficam extremamente caros
+
+// Multiplicador: 100 níveis, podendo chegar a 101 cópias numa sorte absurda.
+const SPEED_LEVELS      = buildMultLevels(LVL_COUNT, 0.06,  10000, GROWTH);
+const LUCK_LEVELS       = buildMultLevels(LVL_COUNT, 0.05,  14000, GROWTH);
+const SELL_LEVELS       = buildMultLevels(LVL_COUNT, 0.04,  15000, GROWTH);
+const RESPAWN_LEVELS    = buildTimeFactorLevels(LVL_COUNT, 0.0085, 0.12, 12000, GROWTH);
+const JUMP_LEVELS       = buildMultLevels(LVL_COUNT, 0.05,  9000, GROWTH);
+const PICKUP_LEVELS     = buildRadiusLevels(LVL_COUNT, 2.2, 0.15, 11000, GROWTH);
+const VISION_LEVELS     = buildDistLevels(LVL_COUNT, 100, 15,  10000, GROWTH);
+const LUCKY_LEVELS      = buildChanceLevels(LVL_COUNT, 0.01, 25000, GROWTH);
+const DAILY_LEVELS      = buildMultLevels(LVL_COUNT, 0.15, 16000, GROWTH);
+const MINEBONUS_LEVELS  = buildMultLevels(LVL_COUNT, 0.07, 18000, GROWTH);
+
+const MULTI_LEVELS = Array.from({length:LVL_COUNT},(_,i)=>({
+  level:i+1, maxCopies:i+2, price:i===0?0:Math.round(25000*Math.pow(GROWTH*1.03,i-1))
+}));
+
+// Caçador de Preto: 100 níveis, caro de verdade.
+const BLACK_LEVELS = Array.from({length:LVL_COUNT},(_,i)=>({
+  level:i+1, multiplier:+Math.min(250,(1+i*0.75)).toFixed(2), price:i===0?0:Math.round(500000*Math.pow(GROWTH*1.06,i-1))
+}));
+let blackLevel = 1;
+let oreRarityLevel = 1; // Upgrade especial de mineração: até 500 níveis
+let lastUpgradeBatch = null;
+
+
+// Caçador de Verde: Verde é mais raro que Preto e só aparece em minérios.
+const GREEN_LEVELS = Array.from({length:LVL_COUNT},(_,i)=>({
+  level:i+1, multiplier:+Math.min(600,(1+i*1.35)).toFixed(2), price:i===0?0:Math.round(2500000*Math.pow(GROWTH*1.08,i-1))
+}));
+
+// Sorte de Mineração: 500 níveis. Aumenta o peso de TODAS as raridades acima de Comum.
+// O preço escala muito forte para que os últimos níveis sejam endgame.
+const ORE_RARITY_LUCK_LEVELS = Array.from({length:500},(_,i)=>({
+  level:i+1,
+  multiplier:+(1+i*0.05).toFixed(2),
+  price:i===0?0:Math.round(1e12*Math.pow(1.18,i-1))
+}));
+
+// Upgrades Ultimate — todos com 100 níveis e economia de longo prazo.
+const XPBOOST_LEVELS    = buildMultLevels(LVL_COUNT, 0.08,  22000, GROWTH);
+const CASHCORE_LEVELS   = buildMultLevels(LVL_COUNT, 0.06,  26000, GROWTH);
+const OREYIELD_LEVELS   = buildChanceLevels(LVL_COUNT, 0.02,  30000, GROWTH);
+const ENERGY_LEVELS     = buildMultLevels(LVL_COUNT, 0.07,  18000, GROWTH);
+const MAGNET_LEVELS     = buildRadiusLevels(LVL_COUNT, 3.0, 0.20,  20000, GROWTH);
+const DASH_LEVELS       = buildMultLevels(LVL_COUNT, 0.08,  35000, GROWTH);
+const EVENTLUCK_LEVELS  = buildChanceLevels(LVL_COUNT, 0.018,  42000, GROWTH);
+
+let xpBoostLevel=1, cashCoreLevel=1, oreYieldLevel=1, energyLevel=1, magnetLevel=1, dashLevel=1, eventLuckLevel=1;
+let hyperWealthLevel=1, hyperOreLevel=1, hyperXPPowerLevel=1, hyperSpeedLevel=1, hyperRareLevel=1;
+let mineOreCountLevel=1;
+
+function buildHyperLevels(n, basePrice, growth, step, cap=Infinity){
+  const arr=[];
+  for(let i=1;i<=n;i++){
+    const multiplier=Math.min(cap, +(1+(i-1)*step).toFixed(3));
+    const price=i===1 ? 0 : basePrice*Math.pow(growth,i-2);
+    arr.push({level:i,multiplier,price});
+  }
+  return arr;
+}
+
+// Endgame extremo: os níveis 2+ custam mais de 100 duotrigintilhões.
+const HYPER_WEALTH_LEVELS=buildHyperLevels(100,1.25e101,1.12,0.12);
+const HYPER_ORE_LEVELS=buildHyperLevels(100,1.50e101,1.13,0.14);
+const HYPER_XP_LEVELS=buildHyperLevels(100,1.75e101,1.14,0.16);
+const HYPER_SPEED_LEVELS=buildHyperLevels(100,2.00e101,1.115,0.10);
+const HYPER_RARE_LEVELS=buildHyperLevels(100,2.50e101,1.15,0.18);
+
+// Expansão da mina: limitada a 20 minérios simultâneos para manter o FPS estável.
+// Nível 1 = 12 minérios; nível 9 = 20 minérios (limite pensado pra manter o
+// FPS estável em PCs antigos). A lista para exatamente no nível 9 — antes ela
+// ia até o nível 20 cobrando cada vez mais caro sem entregar minério nenhum
+// a mais depois do 9, o que era pagar por nada.
+const MINE_ORE_COUNT_LEVELS = Array.from({length:9},(_,i)=>{
+  const level=i+1;
+  const oreCount=Math.min(20, 12 + (level-1));
+  const price= level===1 ? 0 : Math.round(1e105 * Math.pow(1.075, level-2));
+  return {level, oreCount, price};
+});
+
+const UPGRADE_CATEGORIES = {
+  speed:       { title:'Velocidade',        color:'#4aa8ff', levels:SPEED_LEVELS,     get:()=>speedLevel,      set:n=>{speedLevel=n;},      desc:l=>`x${l.multiplier.toFixed(2)} de velocidade` },
+  luck:        { title:'Sorte',             color:'#ff66cc', levels:LUCK_LEVELS,      get:()=>luckLevel,       set:n=>{luckLevel=n;},       desc:l=>`x${l.multiplier.toFixed(2)} chance de raridade boa` },
+  sell:        { title:'Comerciante',       color:'#33cc99', levels:SELL_LEVELS,      get:()=>sellLevel,       set:n=>{sellLevel=n;},       desc:l=>`+${Math.round((l.multiplier-1)*100)}% ao vender itens` },
+  respawn:     { title:'Minerador Veloz',   color:'#ffaa33', levels:RESPAWN_LEVELS,   get:()=>respawnLevel,    set:n=>{respawnLevel=n;},    desc:l=>`Blocos/minérios ${Math.round((1-l.timeFactor)*100)}% mais rápidos pra reaparecer` },
+  jump:        { title:'Pulo',              color:'#66ff99', levels:JUMP_LEVELS,      get:()=>jumpLevel,       set:n=>{jumpLevel=n;},       desc:l=>`x${l.multiplier.toFixed(2)} de altura do pulo` },
+  pickup:      { title:'Alcance de Coleta', color:'#ffcc00', levels:PICKUP_LEVELS,    get:()=>pickupLevel,     set:n=>{pickupLevel=n;},     desc:l=>`Pega item a ${l.radius.toFixed(2)}m de distância` },
+  vision:      { title:'Visão',             color:'#00e5ff', levels:VISION_LEVELS,    get:()=>visionLevel,     set:n=>{visionLevel=n; applyVisionEffect();}, desc:l=>`Enxerga até ${l.dist}m de distância` },
+  lucky:       { title:'Sortudo',           color:'#ff4477', levels:LUCKY_LEVELS,     get:()=>luckyLevel,      set:n=>{luckyLevel=n;},      desc:l=>`${Math.round(l.chance*100)}% de chance do item vir em dobro (ou mais, ver Multiplicador)` },
+  multi:       { title:'Multiplicador',     color:'#ff8800', levels:MULTI_LEVELS,     get:()=>multiLevel,      set:n=>{multiLevel=n;},      desc:l=>`Quando a sorte acerta, pode vir até ${l.maxCopies}x do mesmo item` },
+  daily:       { title:'Bônus Diário',      color:'#ffe066', levels:DAILY_LEVELS,     get:()=>dailyBonusLevel, set:n=>{dailyBonusLevel=n;}, desc:l=>`x${l.multiplier.toFixed(2)} no bônus por jogar todo dia` },
+  mineBonus:   { title:'Minerador de Elite',color:'#b967ff', levels:MINEBONUS_LEVELS, get:()=>mineBonusLevel,  set:n=>{mineBonusLevel=n;},  desc:l=>`+${Math.round((l.multiplier-1)*100)}% no valor dos minérios` },
+  blackHunter: { title:'Caçador de Preto',  color:'#22ffee', levels:BLACK_LEVELS,     get:()=>blackLevel,      set:n=>{blackLevel=n;},      desc:l=>`x${l.multiplier} de chance específica pra Preto cair (além da Sorte normal)` },
+  greenHunter: { title:'Caçador de Cinza',  color:'#9aa0a6', levels:GREEN_LEVELS,     get:()=>greenHunterLevel,  set:n=>{greenHunterLevel=n;}, desc:l=>`x${l.multiplier} de chance específica pra Cinza cair — mais raro que Preto` },
+  oreRarity:  { title:'Sorte do Mineiro',    color:'#7cffb2', levels:ORE_RARITY_LUCK_LEVELS, get:()=>oreRarityLevel, set:n=>{oreRarityLevel=n;}, desc:l=>`x${l.multiplier.toFixed(2)} nos minérios raros (até nível 500)` },
+  hyperWealth: { title:'💰 Fortuna Hiper', color:'#ffd23f', levels:HYPER_WEALTH_LEVELS, get:()=>hyperWealthLevel, set:n=>{hyperWealthLevel=n;}, desc:l=>`x${l.multiplier.toFixed(2)} no dinheiro das vendas` },
+  hyperOre: { title:'⛏️ Forja Hiper', color:'#ff8c42', levels:HYPER_ORE_LEVELS, get:()=>hyperOreLevel, set:n=>{hyperOreLevel=n;}, desc:l=>`x${l.multiplier.toFixed(2)} no valor dos minérios` },
+  hyperXP: { title:'🧠 Reator Hiper de XP', color:'#8d7dff', levels:HYPER_XP_LEVELS, get:()=>hyperXPPowerLevel, set:n=>{hyperXPPowerLevel=n;}, desc:l=>`x${l.multiplier.toFixed(2)} no XP ganho` },
+  hyperSpeed: { title:'⚡ Motor Hiper', color:'#39e7ff', levels:HYPER_SPEED_LEVELS, get:()=>hyperSpeedLevel, set:n=>{hyperSpeedLevel=n;}, desc:l=>`x${l.multiplier.toFixed(2)} de velocidade extra` },
+  hyperRare: { title:'💎 Detector Hiper-Raro', color:'#ffffff', levels:HYPER_RARE_LEVELS, get:()=>hyperRareLevel, set:n=>{hyperRareLevel=n;}, desc:l=>`x${l.multiplier.toFixed(2)} no peso das raridades de minério` },
+  mineOreCount: { title:'⛏️ Expansão da Mina', color:'#c7d2fe', levels:MINE_ORE_COUNT_LEVELS, get:()=>mineOreCountLevel, set:n=>{mineOreCountLevel=n; ensureMineOreCount();}, desc:l=>`${l.oreCount} minérios ativos na mina` },
+  xpBoost:    { title:'Núcleo de XP',        color:'#8ee7ff', levels:XPBOOST_LEVELS,    get:()=>xpBoostLevel,    set:n=>{xpBoostLevel=n;},    desc:l=>`x${l.multiplier.toFixed(2)} XP ganho` },
+  cashCore:   { title:'Núcleo de Fortuna',   color:'#ffd34d', levels:CASHCORE_LEVELS,   get:()=>cashCoreLevel,   set:n=>{cashCoreLevel=n;},   desc:l=>`x${l.multiplier.toFixed(2)} dinheiro recebido` },
+  oreYield:   { title:'Extrator de Minério', color:'#ff7a45', levels:OREYIELD_LEVELS,   get:()=>oreYieldLevel,   set:n=>{oreYieldLevel=n;},   desc:l=>`${Math.round(l.chance*100)}% de chance de extrair minério extra` },
+  energy:     { title:'Reator de Energia',   color:'#73ffcf', levels:ENERGY_LEVELS,     get:()=>energyLevel,     set:n=>{energyLevel=n;},     desc:l=>`x${l.multiplier.toFixed(2)} de energia para correr` },
+  magnet:     { title:'Ímã de Relíquias',    color:'#ff8cff', levels:MAGNET_LEVELS,     get:()=>magnetLevel,     set:n=>{magnetLevel=n;},     desc:l=>`alcance do ímã: ${l.radius.toFixed(2)}m` },
+  dash:       { title:'Propulsor de Dash',   color:'#7dd3ff', levels:DASH_LEVELS,       get:()=>dashLevel,      set:n=>{dashLevel=n;},      desc:l=>`x${l.multiplier.toFixed(2)} força do Dash` },
+  eventLuck:  { title:'Radar de Eventos',    color:'#ffb86b', levels:EVENTLUCK_LEVELS,  get:()=>eventLuckLevel, set:n=>{eventLuckLevel=n;}, desc:l=>`${Math.round(l.chance*100)}% de bônus para eventos` }
+};
+
+// quando o Sortudo acerta, isso decide quantas copias vem no total (2 a 5),
+// cada copia extra alem da 2a e cada vez mais dificil de vir
+function rollDropCopies(){
+  if(Math.random() >= LUCKY_LEVELS[luckyLevel-1].chance) return 1;
+  let copies = 2;
+  const maxCopies = MULTI_LEVELS[multiLevel-1].maxCopies;
+  let chanceNext = 0.5;
+  while(copies < maxCopies && Math.random() < chanceNext){
+    copies++;
+    chanceNext *= 0.5;
+  }
+  return copies;
+}
+
+function applyVisionEffect(){
+  if(!scene || !camera) return;
+  const dist = VISION_LEVELS[visionLevel-1].dist;
+  scene.fog.far = dist;
+  camera.far = dist + 30;
+  camera.updateProjectionMatrix();
+}
+
+// ---- Área da mina (canto noroeste do mapa) ----
+const MINE_X0=-140, MINE_X1=-100, MINE_Z0=-140, MINE_Z1=-100;
+function inMineAvoidZone(x,z){
+  return x > MINE_X0-8 && x < MINE_X1+8 && z > MINE_Z0-8 && z < MINE_Z1+8;
+}
+
+// ---- Torre de parkour (canto sudeste do mapa) ----
+// cada degrau: cx/cz = centro, w/d = largura/profundidade, topY = altura do topo
+// esse traçado foi validado com uma simulação da física do jogo rodando um "bot"
+// até o topo, então os vãos são difíceis mas sempre alcançáveis de verdade
+const PARKOUR_PLATFORMS = [
+  { cx:101.0, cz:137.0, w:6.0, d:6.0, topY:2    },
+  { cx:104.0, cz:132.9, w:5.8, d:5.8, topY:3.8  },
+  { cx:101.0, cz:128.8, w:5.7, d:5.7, topY:5.6  },
+  { cx:104.0, cz:124.6, w:5.5, d:5.5, topY:7.4  },
+  { cx:101.0, cz:120.5, w:5.4, d:5.4, topY:9.2  },
+  { cx:104.0, cz:116.4, w:5.3, d:5.3, topY:11   },
+  { cx:101.0, cz:112.3, w:5.1, d:5.1, topY:12.8 },
+  { cx:104.0, cz:108.1, w:5.0, d:5.0, topY:14.6 },
+  { cx:101.0, cz:104.0, w:4.8, d:4.8, topY:16.4 },
+  { cx:104.0, cz:99.9,  w:4.7, d:4.7, topY:18.2 },
+  { cx:101.0, cz:95.8,  w:4.5, d:4.5, topY:20   },
+  { cx:104.0, cz:91.6,  w:4.3, d:4.3, topY:21.8 },
+  { cx:101.0, cz:87.5,  w:4.2, d:4.2, topY:23.6 },
+  { cx:104.0, cz:83.4,  w:4.0, d:4.0, topY:25.4 },
+  { cx:101.0, cz:79.3,  w:6.0, d:6.0, topY:27.2 } // plataforma final — o prêmio fica aqui
+];
+const PARKOUR_ZONE = { x0:85, x1:120, z0:65, z1:148 };
+function inParkourZone(x,z){
+  return x > PARKOUR_ZONE.x0 && x < PARKOUR_ZONE.x1 && z > PARKOUR_ZONE.z0 && z < PARKOUR_ZONE.z1;
+}
+
+function randomSpot(){
+  let x,z;
+  do{
+    x = (Math.random()-0.5)*260;
+    z = (Math.random()-0.5)*260;
+  } while(inMineAvoidZone(x,z) || inParkourZone(x,z));
+  return [x,1,z];
+}
+function randomOreSpot(){
+  const x = MINE_X0 + 4 + Math.random()*((MINE_X1-MINE_X0)-8);
+  const z = MINE_Z0 + 4 + Math.random()*((MINE_Z1-MINE_Z0)-8);
+  return [x,1,z];
+}
+
+// verifica se o jogador pousou em cima de alguma plataforma (ou no chão normal)
+// nesse frame — compara a posição dos pés antes/depois de aplicar a gravidade
+function resolveGroundY(prevEyeY, newEyeY, vy, x, z){
+  const feetPrev = prevEyeY - 2, feetNew = newEyeY - 2;
+  let landed = null;
+  if(vy <= 0 && feetPrev >= -0.05 && feetNew <= 0.05) landed = 0; // chão do mundo
+  for(const p of platforms){
+    if(x > p.x0 && x < p.x1 && z > p.z0 && z < p.z1){
+      if(vy <= 0 && feetPrev >= p.topY-0.6 && feetNew <= p.topY+0.6){
+        if(landed === null || p.topY > landed) landed = p.topY;
+      }
+    }
+  }
+  return landed;
+}
+
+// ---- Salvamento ----
+const STORAGE_KEY = 'fps_game_save_v1';
+
+// ===== ANTI-CHEAT HELPERS =====
+const SAVE_SECRET = '21b34306634f19cf7532ccae64cb3328';
+function sigHash(str, seed){
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for(let i=0, ch; i<str.length; i++){
+    ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1>>>16), 2246822507) ^ Math.imul(h2 ^ (h2>>>13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2>>>16), 2246822507) ^ Math.imul(h1 ^ (h1>>>13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1>>>0)).toString(36);
+}
+function signText(t){
+  return sigHash(SAVE_SECRET + '|' + t, 0x5f3a91) + '-' + sigHash(t + '|' + SAVE_SECRET.split('').reverse().join(''), 0x2c7e44);
+}
+function packSigned(obj){
+  const d = JSON.stringify(obj);
+  return JSON.stringify({ v:2, d:d, s:signText(d) });
+}
+function unpackSigned(raw){
+  if(!raw || typeof raw !== 'string') return null;
+  const o = JSON.parse(raw);
+  if(!o || o.v !== 2 || typeof o.d !== 'string' || typeof o.s !== 'string') return null;
+  if(signText(o.d) !== o.s) return null;
+  return JSON.parse(o.d);
+}
+function esc(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function sanitizeInventory(arr){
+  if(!Array.isArray(arr)) return [];
+  const out = [];
+  for(const it of arr.slice(0, 20000)){
+    if(!it || typeof it !== 'object') continue;
+    if(!Object.prototype.hasOwnProperty.call(RARITIES, it.rarityKey)) continue;
+    const price = Number(it.price), power = Number(it.power);
+    if(!Number.isFinite(price) || price < 0) continue;
+    const name = String(it.name || 'Item').slice(0, 60);
+    const isOre = it.source === 'ore' || name.toLowerCase().includes('minério');
+    const clean = { rarityKey:it.rarityKey, name:name, power:Number.isFinite(power) ? power : 1, price:price, source:isOre ? 'ore' : 'crate' };
+    if(it.bonus) clean.bonus = true;
+    out.push(clean);
+  }
+  return out;
+}
+// ===== END ANTI-CHEAT HELPERS =====
+
+
+function getSaveData(){
+  return {
+    playerName, money, score,
+    speedLevel, luckLevel, sellLevel, respawnLevel, jumpLevel, pickupLevel,
+    visionLevel, luckyLevel, multiLevel, dailyBonusLevel, mineBonusLevel, blackLevel, greenHunterLevel, oreRarityLevel,
+    xpBoostLevel,cashCoreLevel,oreYieldLevel,energyLevel,magnetLevel,dashLevel,eventLuckLevel,
+    hyperWealthLevel,hyperOreLevel,hyperXPPowerLevel,hyperSpeedLevel,hyperRareLevel, mineOreCountLevel,
+    dailyStreak, lastLoginDate, parkourCooldownUntil, inventory, friends,
+    savedAt: new Date().toISOString()
+  };
+}
+
+function applySaveData(data){
+  if(!data) return;
+  playerName = String(data.playerName || 'Jogador').slice(0,24);
+  money = (Number.isFinite(Number(data.money)) && Number(data.money) > 0) ? Number(data.money) : 0;
+  score = Math.max(0, Math.floor(Number(data.score)) || 0);
+  speedLevel = data.speedLevel || 1;
+  luckLevel = data.luckLevel || 1;
+  sellLevel = data.sellLevel || 1;
+  respawnLevel = data.respawnLevel || 1;
+  jumpLevel = data.jumpLevel || 1;
+  pickupLevel = data.pickupLevel || 1;
+  visionLevel = data.visionLevel || 1;
+  luckyLevel = data.luckyLevel || 1;
+  multiLevel = data.multiLevel || 1;
+  dailyBonusLevel = data.dailyBonusLevel || 1;
+  mineBonusLevel = data.mineBonusLevel || 1;
+  blackLevel = data.blackLevel || 1;
+  greenHunterLevel = data.greenHunterLevel || 1;
+  oreRarityLevel = Number(data.oreRarityLevel || 1);
+  oreRarityLevel = Math.max(1, Math.min(500, oreRarityLevel));
+  const maxLv = LVL_COUNT;
+  speedLevel=Math.max(1,Math.min(maxLv,speedLevel)); luckLevel=Math.max(1,Math.min(maxLv,luckLevel)); sellLevel=Math.max(1,Math.min(maxLv,sellLevel)); respawnLevel=Math.max(1,Math.min(maxLv,respawnLevel)); jumpLevel=Math.max(1,Math.min(maxLv,jumpLevel)); pickupLevel=Math.max(1,Math.min(maxLv,pickupLevel)); visionLevel=Math.max(1,Math.min(maxLv,visionLevel)); luckyLevel=Math.max(1,Math.min(maxLv,luckyLevel)); multiLevel=Math.max(1,Math.min(maxLv,multiLevel)); dailyBonusLevel=Math.max(1,Math.min(maxLv,dailyBonusLevel)); mineBonusLevel=Math.max(1,Math.min(maxLv,mineBonusLevel)); blackLevel=Math.max(1,Math.min(maxLv,blackLevel)); greenHunterLevel=Math.max(1,Math.min(maxLv,greenHunterLevel));
+  const lv = v => Math.max(1, Math.min(LVL_COUNT, Math.floor(Number(v)) || 1));
+  xpBoostLevel=lv(data.xpBoostLevel); cashCoreLevel=lv(data.cashCoreLevel); oreYieldLevel=lv(data.oreYieldLevel); energyLevel=lv(data.energyLevel); magnetLevel=lv(data.magnetLevel); dashLevel=lv(data.dashLevel); eventLuckLevel=lv(data.eventLuckLevel);
+  hyperWealthLevel=Math.max(1,Math.min(LVL_COUNT,Number(data.hyperWealthLevel)||1));
+  hyperOreLevel=Math.max(1,Math.min(LVL_COUNT,Number(data.hyperOreLevel)||1));
+  hyperXPPowerLevel=Math.max(1,Math.min(LVL_COUNT,Number(data.hyperXPPowerLevel)||1));
+  hyperSpeedLevel=Math.max(1,Math.min(LVL_COUNT,Number(data.hyperSpeedLevel)||1));
+  hyperRareLevel=Math.max(1,Math.min(LVL_COUNT,Number(data.hyperRareLevel)||1));
+  mineOreCountLevel=Math.max(1,Math.min(MINE_ORE_COUNT_LEVELS.length,Number(data.mineOreCountLevel)||1));
+  dailyStreak = data.dailyStreak || 0;
+  lastLoginDate = data.lastLoginDate || null;
+  parkourCooldownUntil = data.parkourCooldownUntil || 0;
+  inventory = sanitizeInventory(data.inventory);
+  friends = Array.isArray(data.friends) ? data.friends.slice(0,100).map(f => String(f).slice(0,24)) : [];
+  updateNameDisplays();
+  moneyHudEl.textContent = formatMoney(money);
+  scoreEl.textContent = score;
+  renderInventory();
+  renderFriendsList();
+  applyVisionEffect();
+}
+
+function autoSave(){
+  try{
+    localStorage.setItem(STORAGE_KEY, packSigned(getSaveData()));
+    const check = localStorage.getItem(STORAGE_KEY);
+    if(!check){ showSaveWarning(); return false; }
+    hideSaveWarning();
+    const el = document.getElementById('lastSaveHud');
+    if(el){
+      const now = new Date();
+      el.textContent = `salvo às ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+      el.style.color = '#66ff99';
+    }
+    return true;
+  }catch(e){
+    console.warn('Falha ao salvar:', e);
+    showSaveWarning();
+    return false;
+  }
+}
+
+function showSaveWarning(){
+  if(document.getElementById('saveWarning')) return;
+  const el = document.createElement('div');
+  el.id = 'saveWarning';
+  el.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#dd3333;color:#fff;padding:8px 16px;border-radius:6px;font-size:13px;z-index:50;box-shadow:0 2px 8px rgba(0,0,0,0.5);';
+  el.textContent = '⚠️ Seu navegador está bloqueando o salvamento automático. Use "Baixar meu save (.json)" no menu Amigos/Save (F) pra não perder o progresso.';
+  document.body.appendChild(el);
+}
+function hideSaveWarning(){
+  const el = document.getElementById('saveWarning');
+  if(el) el.remove();
+}
+
+let saveLoadFailed = false;
+
+function loadAutoSave(){
+  let raw = null;
+  try{ raw = localStorage.getItem(STORAGE_KEY); }catch(e){ raw = null; }
+  if(!raw) return;
+  let data = null;
+  try{ data = unpackSigned(raw); }catch(e){ data = null; }
+  if(!data){
+    console.warn('Save rejeitado: assinatura inválida.');
+    saveLoadFailed = true;
+    try{ localStorage.setItem(STORAGE_KEY + '_rejected', raw); localStorage.removeItem(STORAGE_KEY); }catch(e){}
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#dd3333;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;z-index:60;max-width:90%;text-align:center;';
+    el.textContent = '🛡️ Save inválido ou adulterado: ele foi ignorado e o jogo começou do zero.';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 12000);
+    return;
+  }
+  try{
+    applySaveData(data);
+  }catch(e){
+    console.warn('Falha ao carregar save automático:', e);
+    saveLoadFailed = true;
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#dd3333;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;z-index:60;max-width:90%;text-align:center;';
+    el.textContent = '⚠️ Não consegui ler seu save salvo neste navegador. Se você tem um arquivo .json exportado, carregue ele pelo menu F (Amigos e Save).';
+    document.body.appendChild(el);
+  }
+}
+
+window.addEventListener('error', (e) => {
+  if(document.getElementById('jsErrorBanner')) return;
+  const el = document.createElement('div');
+  el.id = 'jsErrorBanner';
+  el.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#000;color:#ff5555;padding:8px 16px;border-radius:6px;font-size:12px;z-index:50;max-width:90%;text-align:center;';
+  el.textContent = '⚠️ Erro no jogo: ' + (e.message || 'erro desconhecido') + ' — tira um print disso e me mostra';
+  document.body.appendChild(el);
+});
+
+function exportSave(){
+  const blob = new Blob([packSigned(getSaveData())], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `save_${(playerName||'jogador').replace(/[^a-z0-9_-]/gi,'_')}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function updateNameDisplays(){
+  nameHudEl.textContent = playerName;
+  nameInput.value = playerName;
+}
+
+function renderFriendsList(){
+  friendsListEl.innerHTML = '';
+  friends.forEach((f, idx) => {
+    const row = document.createElement('div');
+    row.className = 'friendRow';
+    row.innerHTML = `<span>${esc(f)}</span><button data-idx="${idx}">Remover</button>`;
+    friendsListEl.appendChild(row);
+  });
+  friendsListEl.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.getAttribute('data-idx'), 10);
+      friends.splice(idx, 1);
+      renderFriendsList();
+      autoSave();
+    });
+  });
+}
+
+function todayStr(){
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+}
+
+function applyDailyBonus(){
+  if(saveLoadFailed) return; // não mexe em dinheiro/save se a leitura do save falhou
+
+  const today = todayStr();
+  if(lastLoginDate === today) return; // já jogou hoje, sem bônus de novo
+
+  if(lastLoginDate){
+    const prev = new Date(lastLoginDate);
+    const now = new Date(today);
+    const diffDays = Math.round((now - prev) / 86400000);
+    dailyStreak = (diffDays === 1) ? dailyStreak + 1 : 1;
+  } else {
+    dailyStreak = 1;
+  }
+  lastLoginDate = today;
+
+  const reward = Math.round(Math.min(dailyStreak, 10) * 15 * DAILY_LEVELS[dailyBonusLevel-1].multiplier);
+  money += reward;
+  autoSave();
+
+  // mostra o aviso assim que a tela carregar
+  setTimeout(() => {
+    showSaleMessage({ name:`Bônus diário! Dia ${dailyStreak} da sequência (+$${reward})` }, 0, true);
+  }, 600);
+}
+
+
+/* ===== Enhanced presentation + quality-of-life layer ===== */
+let stamina = 100;
+let exhausted = false;
+let lastCollectedRarity = '—';
+let lastFrameTime = performance.now();
+let fpsFrames = 0;
+let fpsWindowStart = performance.now();
+let currentFPS = 0;
+
+function toast(message, type='info'){
+  const stack=document.getElementById('toastStack');
+  if(!stack)return;
+  const el=document.createElement('div');
+  el.textContent=message;
+  el.style.cssText=`position:fixed;right:18px;top:${185 + stack.children.length*52}px;padding:10px 14px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(5,10,18,.9);color:#fff;font:12px system-ui;box-shadow:0 10px 30px rgba(0,0,0,.3);opacity:0;transform:translateX(18px);transition:.25s;pointer-events:none;z-index:100`;
+  if(type==='good') el.style.borderColor='rgba(92,255,157,.45)';
+  if(type==='warn') el.style.borderColor='rgba(255,216,77,.45)';
+  stack.appendChild(el);
+  requestAnimationFrame(()=>{el.style.opacity='1';el.style.transform='translateX(0)'});
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateX(18px)';setTimeout(()=>el.remove(),250)},2600);
+}
+
+function updateEnhancedHUD(){
+  const speedEl=document.getElementById('speedHud');
+  const zoneEl=document.getElementById('zoneHud');
+  const rarityEl=document.getElementById('rarityHud');
+  if(!yawObject)return;
+  const x=yawObject.position.x,z=yawObject.position.z;
+  let zone='CAMPO';
+  if(inMineAvoidZone(x,z)) zone='⛏ MINA';
+  else if(inParkourZone(x,z)) zone='🏆 PARKOUR';
+  zoneEl.textContent=zone;
+  const baseSpeed = SPEED_LEVELS[Math.max(0,Math.min(SPEED_LEVELS.length-1,speedLevel-1))].multiplier;
+  const hyperSpeed = HYPER_SPEED_LEVELS[Math.max(0,Math.min(HYPER_SPEED_LEVELS.length-1,hyperSpeedLevel-1))].multiplier;
+  const shownSpeed = Math.min(12, baseSpeed * hyperSpeed);
+  speedEl.textContent=Math.round(shownSpeed*100)+'%';
+  rarityEl.textContent=lastCollectedRarity;
+  const sf=document.getElementById('staminaFill');
+  const maxSt = 100 * ENERGY_LEVELS[Math.max(0,Math.min(ENERGY_LEVELS.length-1,energyLevel-1))].multiplier;
+  sf.style.width=Math.max(0,Math.min(100,(stamina/maxSt)*100))+'%';
+  sf.style.background = exhausted ? 'linear-gradient(90deg,#ff5d73,#ff8a5d)' : 'linear-gradient(90deg,#22d3ee,#5cff9d)';
+}
+
+function drawMinimap(){
+  const c=document.getElementById('mapCanvas'); if(!c||!yawObject)return;
+  const ctx=c.getContext('2d'), w=c.width,h=c.height;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='rgba(4,8,14,.92)';ctx.fillRect(0,0,w,h);
+  const scale=0.82, ox=w/2-yawObject.position.x*scale, oz=h/2-yawObject.position.z*scale;
+  ctx.strokeStyle='rgba(255,255,255,.08)';ctx.lineWidth=1;
+  for(let i=-150;i<=150;i+=25){ctx.beginPath();ctx.moveTo(ox+i*scale,0);ctx.lineTo(ox+i*scale,h);ctx.stroke();ctx.beginPath();ctx.moveTo(0,oz+i*scale);ctx.lineTo(w,oz+i*scale);ctx.stroke()}
+  // mine
+  ctx.fillStyle='rgba(80,90,105,.55)';ctx.fillRect(ox+MINE_X0*scale,oz+MINE_Z0*scale,(MINE_X1-MINE_X0)*scale,(MINE_Z1-MINE_Z0)*scale);
+  // parkour
+  ctx.fillStyle='rgba(168,85,247,.45)';ctx.fillRect(ox+PARKOUR_ZONE.x0*scale,oz+PARKOUR_ZONE.z0*scale,(PARKOUR_ZONE.x1-PARKOUR_ZONE.x0)*scale,(PARKOUR_ZONE.z1-PARKOUR_ZONE.z0)*scale);
+  // collectibles
+  for(const q of [...crates,...ores]){
+    if(q.visible && !q.userData.collected){
+      const px=ox+q.position.x*scale,pz=oz+q.position.z*scale;
+      if(px>-5&&px<w+5&&pz>-5&&pz<h+5){ctx.fillStyle=RARITIES[q.userData.rarityKey]?.hex||'#fff';ctx.globalAlpha=.8;ctx.fillRect(px-2,pz-2,4,4)}
+    }
+  }
+  ctx.globalAlpha=1;
+  if(FRONTIER_HOOKS.drawPeers) FRONTIER_HOOKS.drawPeers(ctx,ox,oz,scale);
+  if(FRONTIER_HOOKS.drawPlaces) FRONTIER_HOOKS.drawPlaces(ctx,ox,oz,scale);
+  // player + direction
+  ctx.save();ctx.translate(w/2,h/2);ctx.rotate(-yawObject.rotation.y);
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(0,-9);ctx.lineTo(6,7);ctx.lineTo(0,4);ctx.lineTo(-6,7);ctx.closePath();ctx.fill();ctx.restore();
+}
+
+function updateCompass(){
+  if(!yawObject)return;
+  const deg=((yawObject.rotation.y*180/Math.PI)%360+360)%360;
+  const dirs=['N','NE','E','SE','S','SW','W','NW'];
+  const idx=Math.round(deg/45)%8;
+  const c=document.getElementById('compass');
+  c.textContent=dirs[idx]+'  ·  '+Math.round(deg)+'°';
+}
+
+// Geometria compartilhada dos minérios: declarar antes de init() para evitar TDZ
+let oreGeoGlobal=null;
+const collisionObjects = [];
+// Otimização para GPUs/CPUs antigas: mantemos muitos minérios como lógica,
+// mas só um pequeno conjunto próximo do jogador fica realmente renderizado e
+// atualizado em cada frame. A seleção completa acontece poucas vezes por segundo.
+const MINE_RENDER_CAP = 20;
+const MINE_ACTIVE_CAP = 20;
+const MINE_CULL_INTERVAL_MS = 250;
+let mineActiveOres = [];
+let lastMineCullAt = 0;
+let mineCullPlayerX = 0;
+let mineCullPlayerZ = 0;
+const MINE_MATERIAL_CACHE = new Map();
+
+function getMineOreMaterial(rarityKey){
+  if(MINE_MATERIAL_CACHE.has(rarityKey)) return MINE_MATERIAL_CACHE.get(rarityKey);
+  const rarity=RARITIES[rarityKey];
+  const glowingRare=['verde','cristal','celestial','abismo','eterno'].includes(rarityKey);
+  const mat=new THREE.MeshStandardMaterial({
+    color:rarity.color, emissive:glowingRare?rarity.glow:0x000000,
+    emissiveIntensity:glowingRare?(rarityKey==='eterno'?2.8:1.8):0,
+    roughness:0.3, metalness:glowingRare?0.28:0.05
+  });
+  MINE_MATERIAL_CACHE.set(rarityKey,mat);
+  return mat;
+}
+
+function refreshMineVisibility(force=false){
+  if(!ores.length) return;
+  const now=performance.now();
+  const px=yawObject?.position?.x ?? mineCullPlayerX;
+  const pz=yawObject?.position?.z ?? mineCullPlayerZ;
+  if(!force && now-lastMineCullAt<MINE_CULL_INTERVAL_MS) return;
+  lastMineCullAt=now; mineCullPlayerX=px; mineCullPlayerZ=pz;
+
+  // Escolhe os minérios vivos mais próximos. Isso mantém o custo de cada frame
+  // baixo mesmo quando o upgrade da mina cria centenas/1000 de pontos lógicos.
+  const candidates=[];
+  for(const ore of ores){
+    if(ore.userData.collected) { ore.visible=false; continue; }
+    const dx=ore.position.x-px, dz=ore.position.z-pz;
+    candidates.push({ore,d2:dx*dx+dz*dz});
+  }
+  candidates.sort((a,b)=>a.d2-b.d2);
+  const next=[];
+  for(let i=0;i<Math.min(MINE_ACTIVE_CAP,candidates.length);i++){
+    const ore=candidates[i].ore;
+    ore.visible=true;
+    next.push(ore);
+  }
+  const activeSet=new Set(next);
+  for(const ore of ores){ if(!activeSet.has(ore)) ore.visible=false; }
+  mineActiveOres=next;
+}
+
+init();
+animate();
+
+function createMineOre(){
+  if(!scene || !oreGeoGlobal) return null;
+  const rarityKey=rollOreRarity();
+  const rarity=RARITIES[rarityKey];
+  const glowingRare=['verde','cristal','celestial','abismo','eterno'].includes(rarityKey);
+  const ore=new THREE.Mesh(oreGeoGlobal,getMineOreMaterial(rarityKey));
+  ore.userData.superGreen=rarityKey==='verde';
+  ore.userData.ultraRare=glowingRare;
+  const [x,y,z]=randomOreSpot();
+  ore.position.set(x,y,z);
+  ore.userData.isOre=true;
+  ore.userData.rarityKey=rarityKey;
+  ore.userData.collected=false;
+  scene.add(ore);
+  ores.push(ore);
+  ore.visible=false;
+  refreshMineVisibility();
+  return ore;
+}
+function getTargetOreCount(){
+  const lvl=Math.max(0,Math.min(MINE_ORE_COUNT_LEVELS.length-1,mineOreCountLevel-1));
+  return Math.min(20, MINE_ORE_COUNT_LEVELS[lvl].oreCount);
+}
+function ensureMineOreCount(){
+  if(!scene || !oreGeoGlobal) return;
+  const target=getTargetOreCount();
+  while(ores.length < target) createMineOre();
+}
+
+function init(){
+  loadAutoSave();
+  applyDailyBonus();
+  updateNameDisplays();
+  moneyHudEl.textContent = formatMoney(money);
+  scoreEl.textContent = score;
+  renderInventory();
+  renderFriendsList();
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x87ceeb);
+  scene.fog = new THREE.Fog(0x87ceeb, 20, 100);
+
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 130);
+  applyVisionEffect(); // aplica o nível de visão salvo, agora que camera/fog existem
+
+  pitchObject = new THREE.Object3D();
+  pitchObject.add(camera);
+  yawObject = new THREE.Object3D();
+  yawObject.position.set(0, 2, 10);
+  yawObject.add(pitchObject);
+  scene.add(yawObject);
+
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1.1);
+  scene.add(hemi);
+  const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+  sun.position.set(50, 80, 30);
+  scene.add(sun);
+
+  const groundGeo = new THREE.PlaneGeometry(300, 300, 4, 4);
+  const groundMat = new THREE.MeshStandardMaterial({ color: 0x3a7d3a });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI/2;
+  scene.add(ground);
+
+  // GridHelper removido: ele criava linhas sobre todo o mapa.
+
+  const wallMat = new THREE.MeshStandardMaterial({ color:0x777777 });
+  const wallGeo1 = new THREE.BoxGeometry(300, 10, 1);
+  for(const [x,z,ry] of [[0,-150,0],[0,150,0],[-150,0,Math.PI/2],[150,0,Math.PI/2]]){
+    const w = new THREE.Mesh(wallGeo1, wallMat);
+    w.position.set(x,5,z);
+    w.rotation.y = ry;
+    scene.add(w);
+    collisionObjects.push(w);
+  }
+
+  const boxMat = new THREE.MeshStandardMaterial({ color:0xaa6633 });
+  for(let i=0;i<25;i++){
+    const w = 3+Math.random()*6;
+    const h = 3+Math.random()*12;
+    const d = 3+Math.random()*6;
+    const geo = new THREE.BoxGeometry(w,h,d);
+    const box = new THREE.Mesh(geo, boxMat);
+    let x, z;
+    do{
+      x = (Math.random()-0.5)*260;
+      z = (Math.random()-0.5)*260;
+    } while ((Math.abs(x) < 15 && Math.abs(z) < 15) || inMineAvoidZone(x,z) || inParkourZone(x,z));
+    box.position.set(x, h/2, z);
+    box.userData.isObstacle = true;
+    box.userData.halfW = w/2 + 0.6;
+    box.userData.halfD = d/2 + 0.6;
+    scene.add(box);
+    collisionObjects.push(box);
+  }
+
+  const crateGeo = new THREE.BoxGeometry(1.5,1.5,1.5);
+  const TOTAL_CRATES = 24;
+  for(let i=0;i<TOTAL_CRATES;i++){
+    const rarityKey = rollRarity();
+    const rarity = RARITIES[rarityKey];
+    const mat = new THREE.MeshStandardMaterial({ color:rarity.color, emissive:rarity.glow, emissiveIntensity:0.9, roughness:0.4 });
+    const crate = new THREE.Mesh(crateGeo, mat);
+    const [x,y,z] = randomSpot();
+    crate.position.set(x, y, z);
+    crate.userData.isCrate = true;
+    crate.userData.rarityKey = rarityKey;
+    scene.add(crate);
+    crates.push(crate);
+  }
+
+  const stoneMat = new THREE.MeshStandardMaterial({ color:0x2b2b30, roughness:0.95 });
+  const mcx = (MINE_X0+MINE_X1)/2, mcz = (MINE_Z0+MINE_Z1)/2;
+  const mw = MINE_X1-MINE_X0, md = MINE_Z1-MINE_Z0;
+
+  const mineFloor = new THREE.Mesh(new THREE.PlaneGeometry(mw, md), stoneMat);
+  mineFloor.rotation.x = -Math.PI/2;
+  mineFloor.position.set(mcx, 0.03, mcz);
+  scene.add(mineFloor);
+
+  function addMineWall(w,h,d,x,y,z){
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), stoneMat);
+    wall.position.set(x,y,z);
+    wall.userData.isObstacle = true;
+    wall.userData.halfW = w/2 + 0.6;
+    wall.userData.halfD = d/2 + 0.6;
+    scene.add(wall);
+    collisionObjects.push(wall);
+  }
+  addMineWall(1, 9, md, MINE_X0, 4.5, mcz);
+  addMineWall(1, 9, md, MINE_X1, 4.5, mcz);
+  addMineWall(mw, 9, 1, mcx, 4.5, MINE_Z0);
+
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(mw, 1, md), stoneMat);
+  roof.position.set(mcx, 9, mcz);
+  scene.add(roof);
+
+  const oreGeo = new THREE.DodecahedronGeometry(0.8, 0);
+  const ORES_TOTAL = getTargetOreCount();
+  oreGeoGlobal = oreGeo;
+  for(let i=0;i<ORES_TOTAL;i++){
+    const rarityKey = rollOreRarity();
+    const glowingRare = ['verde','cristal','celestial','abismo','eterno'].includes(rarityKey);
+    const ore = new THREE.Mesh(oreGeo, getMineOreMaterial(rarityKey));
+    ore.userData.superGreen = rarityKey === 'verde';
+    ore.userData.ultraRare = glowingRare;
+    const [x,y,z] = randomOreSpot();
+    ore.position.set(x,y,z);
+    ore.userData.isOre = true;
+    ore.userData.rarityKey = rarityKey;
+    ore.userData.collected = false;
+    scene.add(ore);
+    ores.push(ore);
+  }
+  refreshMineVisibility(true);
+  ensureMineOreCount();
+
+  // ---- torre de parkour ----
+  const parkourMat = new THREE.MeshStandardMaterial({ color:0x6633aa, emissive:0x8855ff, emissiveIntensity:0.5, roughness:0.5 });
+  PARKOUR_PLATFORMS.forEach(p => {
+    const x0 = p.cx - p.w/2, x1 = p.cx + p.w/2, z0 = p.cz - p.d/2, z1 = p.cz + p.d/2;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(p.w, 1, p.d), parkourMat);
+    mesh.position.set(p.cx, p.topY - 0.5, p.cz);
+    mesh.userData.isObstacle = true;
+    mesh.userData.isPlatform = true;
+    mesh.userData.topY = p.topY;
+    mesh.userData.halfW = p.w/2;
+    mesh.userData.halfD = p.d/2;
+    scene.add(mesh);
+    platforms.push({ x0, x1, z0, z1, topY:p.topY });
+  });
+
+  const finalPlatform = PARKOUR_PLATFORMS[PARKOUR_PLATFORMS.length-1];
+  const trophyMat = new THREE.MeshStandardMaterial({ color:0xffd700, emissive:0xffd700, emissiveIntensity:1.3, roughness:0.2, metalness:0.6 });
+  parkourTrophy = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), trophyMat);
+  parkourTrophy.userData.baseY = finalPlatform.topY + 1.6;
+  parkourTrophy.position.set(finalPlatform.cx, parkourTrophy.userData.baseY, finalPlatform.cz);
+  scene.add(parkourTrophy);
+
+  // Tenta explicitamente pedir uma GPU de alto desempenho ao navegador.
+  // Se WebGL2 não estiver disponível, cai para WebGL1 automaticamente.
+  const renderCanvas = document.createElement('canvas');
+  let glContext = null;
+  // Para a HD 6670 + Edge, preferimos WebGL1/D3D11: o relatório do navegador
+  // mostra que esse caminho é acelerado, enquanto uma tentativa de WebGL2 pode
+  // falhar em drivers antigos.
+  try {
+    glContext = renderCanvas.getContext('webgl', {
+      alpha: false, antialias: false, depth: true, stencil: false,
+      powerPreference: 'high-performance', preserveDrawingBuffer: false,
+      failIfMajorPerformanceCaveat: false, desynchronized: true
+    });
+  } catch(e) {}
+  if(!glContext){
+    try {
+      glContext = renderCanvas.getContext('experimental-webgl', {
+        alpha: false, antialias: false, depth: true, stencil: false,
+        powerPreference: 'high-performance', preserveDrawingBuffer: false,
+        failIfMajorPerformanceCaveat: false
+      });
+    } catch(e) {}
+  }
+  renderer = glContext
+    ? new THREE.WebGLRenderer({ canvas: renderCanvas, context: glContext, antialias:false, powerPreference:'high-performance' })
+    : new THREE.WebGLRenderer({ antialias:false, powerPreference:'high-performance' });
+  renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = false;
+  renderer.setAnimationLoop ? null : null;
+  window.FRONTIER_PERF_MODE = 'HD6670_BALANCED';
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  // Diagnóstico: mostra no console qual renderizador WebGL está realmente ativo.
+  try {
+    const gl = renderer.getContext();
+    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    const gpuName = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+    console.info('[FRONTIER] GPU/WebGL ativo:', gpuName);
+    if(/SwiftShader|Software|llvmpipe/i.test(gpuName || '')) {
+      console.warn('[FRONTIER] O navegador está usando renderização por software. Verifique a aceleração de hardware e o driver da AMD.');
+    }
+  } catch(e) { console.warn('[FRONTIER] Não foi possível identificar a GPU WebGL:', e); }
+
+  clock = new THREE.Clock();
+
+  hint.addEventListener('click', (e) => {
+    if(e.target.closest('.noPointerLock')) return;
+    document.body.requestPointerLock();
+  });
+
+  document.addEventListener('pointerlockchange', () => {
+    if(document.pointerLockElement === document.body){
+      hint.style.display = 'none';
+    } else if(!activePanel){
+      hint.style.display = 'flex';
+    }
+  });
+
+  // fallback: se o navegador bloquear o travamento do mouse (comum ao abrir
+  // o jogo direto de um arquivo local), essa tecla força a tela a fechar
+  // mesmo assim, pra não travar o jogador pra sempre na tela inicial.
+  document.addEventListener('pointerlockerror', () => {
+    console.warn('Não foi possível travar o mouse — use ENTER pra forçar o início.');
+  });
+  document.addEventListener('keydown', (e) => {
+    if((e.code === 'Enter' || e.code === 'NumpadEnter') && hint.style.display !== 'none'){
+      if(document.activeElement === nameInput){
+        playerName = nameInput.value.trim() || 'Jogador';
+        updateNameDisplays();
+        autoSave();
+      }
+      nameInput.blur();
+      hint.style.display = 'none';
+      document.body.requestPointerLock();
+    }
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if(document.pointerLockElement !== document.body) return;
+    yawObject.rotation.y -= e.movementX * 0.0022;
+    pitchObject.rotation.x -= e.movementY * 0.0022;
+    pitchObject.rotation.x = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, pitchObject.rotation.x));
+  });
+
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('keyup', onKeyUp);
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  window.addEventListener('beforeunload', autoSave);
+  setInterval(autoSave, 30000);
+  document.addEventListener('visibilitychange', () => {
+    if(document.hidden){
+      autoSave();
+      running = false;
+      moveForward = moveBackward = moveLeft = moveRight = false;
+    }
+  });
+
+  // nome do jogador
+  saveNameBtn.addEventListener('click', () => {
+    playerName = nameInput.value.trim() || 'Jogador';
+    updateNameDisplays();
+    autoSave();
+    toast('Perfil salvo!', 'good');
+  });
+
+  if(sellAllBtn) sellAllBtn.addEventListener('click', sellAllItems);
+  if(maxAllUpgradesBtn) maxAllUpgradesBtn.addEventListener('click', maximizeAllUpgrades);
+  const undoUpgradeBtn = document.getElementById('undoUpgradeBtn');
+  if(undoUpgradeBtn) undoUpgradeBtn.addEventListener('click', undoLastUpgradeBatch);
+
+  // salvar / carregar
+  document.getElementById('exportBtn').addEventListener('click', exportSave);
+  document.getElementById('importBtn').addEventListener('click', () => {
+    document.getElementById('importInput').click();
+  });
+  document.getElementById('importInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const verified = unpackSigned(reader.result);
+        if(!verified){ alert('Save inválido, adulterado ou de uma versão sem proteção.'); return; }
+        applySaveData(verified);
+        autoSave();
+        showSaleMessage({ name:'Save carregado!' }, 0, true);
+      }catch(err){
+        alert('Arquivo de save inválido.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  // amigos
+  document.getElementById('addFriendBtn').addEventListener('click', () => {
+    const n = friendNameInput.value.trim();
+    if(!n) return;
+    friends.push(n);
+    friendNameInput.value = '';
+    renderFriendsList();
+    autoSave();
+  });
+  friendNameInput.addEventListener('keydown', (e) => {
+    if(e.code === 'Enter') document.getElementById('addFriendBtn').click();
+  });
+
+  document.getElementById('friendImportBtn').addEventListener('click', () => {
+    document.getElementById('friendImportInput').click();
+  });
+  document.getElementById('friendImportInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const data = unpackSigned(reader.result);
+        if(!data){ alert('Save do amigo inválido ou adulterado.'); return; }
+        renderFriendCompare(data);
+      }catch(err){
+        alert('Arquivo de save inválido.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  const mapToggleBtn = document.getElementById('mapToggleBtn');
+  if(mapToggleBtn){
+    mapToggleBtn.addEventListener('click', () => {
+      const map = document.getElementById('minimap');
+      if(!map) return;
+      const hidden = map.style.display === 'none';
+      map.style.display = hidden ? 'block' : 'none';
+      toast(hidden ? '🗺️ Minimapa exibido' : '🗺️ Minimapa escondido');
+    });
+  }
+
+  const fullscreenBtn = document.getElementById('fullscreenBtn');
+  if(fullscreenBtn){
+    fullscreenBtn.addEventListener('click', async () => {
+      try{
+        if(!document.fullscreenElement) await document.documentElement.requestFullscreen();
+        else await document.exitFullscreen();
+      }catch(e){
+        toast('⚠️ Tela cheia não foi permitida pelo navegador');
+      }
+    });
+  }
+
+  const isTouchDevice = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+  if(isTouchDevice){
+    document.body.classList.add('touchControlsActive');
+  }
+
+  document.querySelectorAll('[data-touch]').forEach(btn => {
+    const action = btn.dataset.touch;
+    const setAction = (pressed) => {
+      if(action === 'forward') moveForward = pressed;
+      if(action === 'back') moveBackward = pressed;
+      if(action === 'left') moveLeft = pressed;
+      if(action === 'right') moveRight = pressed;
+      if(action === 'sprint') running = pressed;
+      if(action === 'interact' && pressed && FRONTIER_HOOKS.interact) FRONTIER_HOOKS.interact();
+      if(action === 'jump' && pressed && canJump){
+        const noBoost = inParkourZone(yawObject.position.x, yawObject.position.z);
+        const jumpMult = noBoost ? 1.0 : JUMP_LEVELS[jumpLevel-1].multiplier;
+        velocity.y = 9 * jumpMult;
+        canJump = false;
+      }
+    };
+    btn.addEventListener('touchstart', e => { e.preventDefault(); setAction(true); }, {passive:false});
+    btn.addEventListener('touchend', () => setAction(false));
+    btn.addEventListener('touchcancel', () => setAction(false));
+  });
+
+  let lookTouchId = null;
+  let lookX = 0;
+  let lookY = 0;
+  renderer.domElement.addEventListener('touchstart', e => {
+    if(!e.touches.length || e.target !== renderer.domElement) return;
+    lookTouchId = e.changedTouches[0].identifier;
+    lookX = e.changedTouches[0].clientX;
+    lookY = e.changedTouches[0].clientY;
+  }, {passive:true});
+  renderer.domElement.addEventListener('touchmove', e => {
+    if(lookTouchId === null) return;
+    for(const touch of e.touches){
+      if(touch.identifier !== lookTouchId) continue;
+      const dx = touch.clientX - lookX;
+      const dy = touch.clientY - lookY;
+      lookX = touch.clientX;
+      lookY = touch.clientY;
+      yawObject.rotation.y -= dx * 0.004;
+      pitchObject.rotation.x -= dy * 0.004;
+      pitchObject.rotation.x = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, pitchObject.rotation.x));
+      break;
+    }
+  }, {passive:true});
+  renderer.domElement.addEventListener('touchend', e => {
+    for(const touch of e.changedTouches){ if(touch.identifier === lookTouchId) lookTouchId = null; }
+  });
+
+  renderUpgrades();
+}
+
+function renderFriendCompare(data){
+  friendCompareEl.innerHTML = `
+    <div class="panelItem" style="border-left-color:#4aa8ff">
+      <div class="info">
+        <div class="nm">${esc(String(data.playerName || 'Amigo').slice(0,24))}</div>
+        <div class="rar">Dinheiro: $${formatMoney(data.money||0)} · Itens: ${esc(Array.isArray(data.inventory) ? data.inventory.length : 0)} · Vel. nível ${esc(Number(data.speedLevel) || 1)}</div>
+      </div>
+    </div>
+    <div class="panelItem" style="border-left-color:#ffd700">
+      <div class="info">
+        <div class="nm">${esc(playerName)} (você)</div>
+        <div class="rar">Dinheiro: $${formatMoney(money)} · Itens: ${inventory.length} · Vel. nível ${speedLevel}</div>
+      </div>
+    </div>
+  `;
+}
+
+function setPanel(name){
+  activePanel = (activePanel === name) ? null : name;
+  invEl.classList.toggle('open', activePanel === 'inventory');
+  shopEl.classList.toggle('open', activePanel === 'shop');
+  upgEl.classList.toggle('open', activePanel === 'upgrades');
+  friendsEl.classList.toggle('open', activePanel === 'friends');
+  if(onlinePanelEl) onlinePanelEl.classList.toggle('open', activePanel === 'online');
+
+  if(activePanel === 'shop') renderShop();
+  if(activePanel === 'upgrades') renderUpgrades();
+  if(activePanel === 'friends') renderFriendsList();
+  if(activePanel === 'online' && FRONTIER_HOOKS.renderOnline) FRONTIER_HOOKS.renderOnline();
+
+  if(activePanel){
+    if(document.pointerLockElement === document.body) document.exitPointerLock();
+  } else {
+    if(document.pointerLockElement !== document.body) document.body.requestPointerLock();
+  }
+}
+
+function addToInventory(rarityKey, item, isOre=false){
+  if(!item) return;
+  inventory.push({ rarityKey, ...item, source: isOre ? 'ore' : 'crate' });
+  // O Extrator de Minério só afeta minérios, não caixas comuns.
+  if(isOre && Math.random() < OREYIELD_LEVELS[oreYieldLevel-1].chance){
+    inventory.push({ rarityKey, ...item, source:'ore', bonus:true });
+    showSaleMessage({name:'Minério extra!'}, 0, true);
+  }
+  renderInventory();
+  autoSave();
+}
+
+function renderInventory(){
+  invListEl.innerHTML = '';
+  panelEmptyInvEl.style.display = inventory.length ? 'none' : 'block';
+  for(let i=inventory.length-1; i>=0; i--){
+    const it = inventory[i];
+    const rarity = RARITIES[it.rarityKey];
+    const row = document.createElement('div');
+    row.className = 'panelItem';
+    row.style.borderLeftColor = rarity.hex;
+    row.innerHTML = `
+      <div class="ic" style="background:${rarity.hex}"></div>
+      <div class="info">
+        <div class="nm">${esc(it.name)}</div>
+        <div class="rar">${it.source==='ore'?'⛏ Minério':'📦 Caixa'} · ${rarity.label} · poder ${it.power}</div>
+      </div>
+    `;
+    invListEl.appendChild(row);
+  }
+}
+
+function getItemSellPrice(it){
+  if(!it || typeof it.price !== 'number' || !Number.isFinite(it.price)) return 0;
+  const sellMult = SELL_LEVELS[Math.max(0, Math.min(SELL_LEVELS.length-1, sellLevel-1))].multiplier;
+  const cashMult = CASHCORE_LEVELS[Math.max(0, Math.min(CASHCORE_LEVELS.length-1, cashCoreLevel-1))].multiplier;
+  const hyperCashMult = HYPER_WEALTH_LEVELS[Math.max(0, Math.min(99, hyperWealthLevel-1))].multiplier;
+  return Math.max(1, Math.round(it.price * sellMult * cashMult));
+}
+
+function renderShop(){
+  moneyShopEl.textContent = formatMoney(money);
+  shopListEl.innerHTML = '';
+  panelEmptyShopEl.style.display = inventory.length ? 'none' : 'block';
+
+  let total = 0;
+  for(const it of inventory) total += getItemSellPrice(it);
+  if(sellAllBtn) sellAllBtn.disabled = inventory.length === 0;
+  if(sellAllMetaEl){
+    sellAllMetaEl.textContent = inventory.length
+      ? `📦 ${inventory.length} item(ns) · valor total agora: $${formatMoney(total)}`
+      : 'Nenhum item para vender.';
+  }
+
+  for(let i=inventory.length-1; i>=0; i--){
+    const it = inventory[i];
+    const rarity = RARITIES[it.rarityKey] || RARITIES.comum;
+    const price = getItemSellPrice(it);
+    const row = document.createElement('div');
+    row.className = 'panelItem';
+    row.style.borderLeftColor = rarity.hex;
+    row.innerHTML = `
+      <div class="ic" style="background:${rarity.hex}"></div>
+      <div class="info">
+        <div class="nm">${esc(it.name)}</div>
+        <div class="rar">${it.source==='ore'?'⛏ Minério':'📦 Caixa'} · ${rarity.label} · $${formatMoney(price)}</div>
+      </div>
+      <button class="sellBtn" data-idx="${i}">Vender</button>
+    `;
+    shopListEl.appendChild(row);
+  }
+  shopListEl.querySelectorAll('.sellBtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      sellItem(parseInt(btn.getAttribute('data-idx'), 10));
+    });
+  });
+}
+
+function renderUpgrades(){
+  moneyUpgEl.textContent = formatMoney(money);
+  upgListEl.innerHTML = '';
+
+  Object.entries(UPGRADE_CATEGORIES).forEach(([catKey, cat]) => {
+    const head = document.createElement('div');
+    head.style.display = 'grid';
+    head.style.gridTemplateColumns = '1fr auto';
+    head.style.alignItems = 'center';
+    head.style.gap = '8px';
+    const h3 = document.createElement('h3');
+    h3.textContent = cat.title;
+    h3.style.marginBottom = '8px';
+    head.appendChild(h3);
+    const maxBtn = document.createElement('button');
+    maxBtn.className = 'maxCatBtn';
+    maxBtn.textContent = cat.get() >= cat.levels.length ? '✅ MAX' : 'MAX';
+    maxBtn.style.width = 'auto';
+    maxBtn.style.padding = '6px 9px';
+    maxBtn.disabled = cat.get() >= cat.levels.length;
+    maxBtn.onclick = () => {
+      const bought = buyUpgradeMax(catKey);
+      moneyHudEl.textContent = formatMoney(money);
+      moneyUpgEl.textContent = formatMoney(money);
+      renderUpgrades();
+      autoSave();
+      toast(bought ? `⚡ ${cat.title}: +${bought} nível(is)` : `💡 ${cat.title}: falta dinheiro ou já está no máximo.`);
+    };
+    head.appendChild(maxBtn);
+    upgListEl.appendChild(head);
+
+    const curLevel = cat.get();
+    cat.levels.forEach((lvl, idx) => {
+      const num = idx+1;
+      const row = document.createElement('div');
+      row.className = 'panelItem';
+      let rightHtml;
+      if(num <= curLevel){
+        rightHtml = num === curLevel
+          ? '<span style="opacity:.8;font-size:12px;">Nível atual</span>'
+          : '<span style="opacity:.5;font-size:12px;">Comprado</span>';
+      } else if(num === curLevel+1){
+        const afford = money >= lvl.price;
+        rightHtml = `<button class="sellBtn buyBtn" data-cat="${catKey}" data-lvl="${num}" ${afford?'':'disabled'}>Comprar $${formatMoney(lvl.price)}</button>`;
+      } else {
+        rightHtml = '<span style="opacity:.4;font-size:12px;">Bloqueado</span>';
+      }
+      row.innerHTML = `
+        <div class="ic" style="background:${cat.color}"></div>
+        <div class="info">
+          <div class="nm">${cat.title} Nível ${num}</div>
+          <div class="rar">${cat.desc(lvl)}</div>
+        </div>
+        ${rightHtml}
+      `;
+      upgListEl.appendChild(row);
+    });
+  });
+
+  upgListEl.querySelectorAll('.buyBtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      buyUpgrade(btn.getAttribute('data-cat'), parseInt(btn.getAttribute('data-lvl'), 10));
+    });
+  });
+}
+
+function buyUpgrade(catKey, lvl){
+  const cat = UPGRADE_CATEGORIES[catKey];
+  if(!cat) return;
+  if(lvl !== cat.get()+1) return;
+  const info = cat.levels[lvl-1];
+  if(money < info.price) return;
+  money -= info.price;
+  cat.set(lvl);
+  moneyHudEl.textContent = formatMoney(money);
+  renderUpgrades();
+  showSaleMessage({ name:`${cat.title} Nível ${lvl} comprado!` }, info.price, true);
+  autoSave();
+}
+
+function sellItem(idx){
+  const it = inventory[idx];
+  if(!it) return;
+  const finalPrice = getItemSellPrice(it);
+  if(!finalPrice) return;
+  money += finalPrice;
+  if(FRONTIER_HOOKS.addXP) FRONTIER_HOOKS.addXP(Math.max(2, Math.round(finalPrice/60)));
+  moneyHudEl.textContent = formatMoney(money);
+  showSaleMessage(it, finalPrice, false);
+  inventory.splice(idx, 1);
+  renderInventory();
+  renderShop();
+  autoSave();
+}
+
+function sellAllItems(){
+  if(!inventory.length){
+    showSaleMessage({name:'Inventário vazio'}, 0, true);
+    return;
+  }
+  const count = inventory.length;
+  let total = 0;
+  let ores = 0;
+  for(const it of inventory){
+    total += getItemSellPrice(it);
+    if(it.source === 'ore') ores++;
+  }
+  money += total;
+  if(FRONTIER_HOOKS.addXP) FRONTIER_HOOKS.addXP(Math.max(5, Math.round(total/45)));
+  inventory = [];
+  moneyHudEl.textContent = formatMoney(money);
+  renderInventory();
+  renderShop();
+  showSaleMessage({name:`${count} item(ns) vendidos`}, total, false);
+  if(ores) toast(`⛏ ${ores} minério(s) vendidos junto!`);
+  autoSave();
+}
+
+function cloneUpgradeLevels(){
+  const snap={};
+  for(const [key,cat] of Object.entries(UPGRADE_CATEGORIES)) snap[key]=cat.get();
+  return snap;
+}
+
+function buyUpgradeMax(catKey){
+  const cat = UPGRADE_CATEGORIES[catKey];
+  if(!cat) return {bought:0,spent:0};
+  let bought = 0, spent = 0;
+  // Never spend money without being able to afford the exact next level.
+  while(cat.get() < cat.levels.length){
+    const nextLevel = cat.get()+1;
+    const info = cat.levels[nextLevel-1];
+    if(!info || !Number.isFinite(info.price) || info.price < 0 || money < info.price) break;
+    money -= info.price;
+    spent += info.price;
+    cat.set(nextLevel);
+    bought++;
+  }
+  return {bought,spent};
+}
+
+function maximizeAllUpgrades(){
+  const before = cloneUpgradeLevels();
+  const moneyBefore = money;
+  let totalBought = 0, totalSpent = 0;
+  // One pass is enough because every category price only goes upward.
+  for(const key of Object.keys(UPGRADE_CATEGORIES)){
+    const r = buyUpgradeMax(key);
+    totalBought += r.bought;
+    totalSpent += r.spent;
+  }
+  const after = cloneUpgradeLevels();
+  lastUpgradeBatch = {before, after, moneyBefore, moneyAfter:money, spent:totalSpent, bought:totalBought, at:Date.now()};
+  try{ sessionStorage.setItem('FRONTIER_LAST_UPGRADE_BATCH', JSON.stringify(lastUpgradeBatch)); }catch(e){}
+
+  moneyHudEl.textContent = formatMoney(money);
+  if(document.getElementById('moneyUpg')) document.getElementById('moneyUpg').textContent = formatMoney(money);
+  renderUpgrades();
+  autoSave();
+
+  if(totalBought){
+    showSaleMessage({name:`⚡ ${totalBought} nível(is) comprados`}, totalSpent, true);
+    toast(`🚀 Gastou $${formatMoney(totalSpent)}. Ficou com $${formatMoney(money)}.`);
+  }else{
+    toast('💡 Nenhum próximo nível cabe no seu dinheiro.');
+  }
+}
+
+function undoLastUpgradeBatch(){
+  let batch = lastUpgradeBatch;
+  if(!batch){
+    try{ batch=JSON.parse(sessionStorage.getItem('FRONTIER_LAST_UPGRADE_BATCH')||'null'); }catch(e){ batch=null; }
+  }
+  if(!batch || !batch.before){ toast('↩️ Não existe uma maximização recente para desfazer.'); return; }
+  for(const [key,level] of Object.entries(batch.before)){
+    const cat=UPGRADE_CATEGORIES[key];
+    if(cat) cat.set(Math.max(1, Math.min(cat.levels.length, Number(level)||1)));
+  }
+  money = Number(batch.moneyBefore)||money;
+  lastUpgradeBatch=null;
+  try{ sessionStorage.removeItem('FRONTIER_LAST_UPGRADE_BATCH'); }catch(e){}
+  moneyHudEl.textContent=formatMoney(money);
+  if(document.getElementById('moneyUpg')) document.getElementById('moneyUpg').textContent=formatMoney(money);
+  renderUpgrades();
+  autoSave();
+  toast(`↩️ Compra desfeita. $${formatMoney(money)} restaurado.`);
+}
+
+function getNextUpgradeInfo(catKey){
+  const cat=UPGRADE_CATEGORIES[catKey];
+  if(!cat) return null;
+  const level=cat.get();
+  if(level>=cat.levels.length) return {max:true, level};
+  const info=cat.levels[level];
+  return {max:false,level,next:level+1,price:info?.price||0,canAfford:money>=(info?.price||0)};
+}
+
+function showPickupMessage(rarityKey, item, isOre, copies){
+  const rarity = RARITIES[rarityKey];
+  const prefix = isOre ? '⛏ Minerado: ' : '+ ';
+  const suffix = copies > 1 ? ` 🍀 x${copies}!` : '';
+  pickupMsgEl.textContent = `${prefix}${item.name} (${rarity.label})${suffix}`;
+  pickupMsgEl.style.color = copies > 1 ? '#ff4477' : rarity.hex;
+  pickupMsgEl.style.opacity = '1';
+  pickupMsgEl.style.transform = 'translate(-50%,-10px)';
+  clearTimeout(showPickupMessage._t);
+  showPickupMessage._t = setTimeout(() => {
+    pickupMsgEl.style.opacity = '0';
+    pickupMsgEl.style.transform = 'translate(-50%,0)';
+  }, 1300);
+}
+
+function showSaleMessage(item, price, isPurchase){
+  saleMsgEl.textContent = isPurchase ? `${item.name}${price?` (-$${formatMoney(price)})`:''}` : `Vendido: ${item.name} por $${formatMoney(price)}`;
+  saleMsgEl.style.opacity = '1';
+  saleMsgEl.style.transform = 'translate(-50%,-10px)';
+  clearTimeout(showSaleMessage._t);
+  showSaleMessage._t = setTimeout(() => {
+    saleMsgEl.style.opacity = '0';
+    saleMsgEl.style.transform = 'translate(-50%,0)';
+  }, 1300);
+}
+
+function respawnCrate(crate){
+  const rarityKey = rollRarity();
+  const rarity = RARITIES[rarityKey];
+  crate.userData.rarityKey = rarityKey;
+  crate.material.color.setHex(rarity.color);
+  crate.material.emissive.setHex(rarity.glow);
+  const [x,y,z] = randomSpot();
+  crate.position.set(x, y, z);
+  crate.userData.collected = false;
+  crate.visible = true;
+}
+
+function respawnOre(ore){
+  const rarityKey=rollOreRarity();
+  ore.userData.rarityKey=rarityKey;
+  ore.userData.superGreen=rarityKey==='verde';
+  ore.userData.ultraRare=['verde','cristal','celestial','abismo','eterno'].includes(rarityKey);
+  ore.material=getMineOreMaterial(rarityKey);
+  const [x,y,z]=randomOreSpot();
+  ore.position.set(x,y,z);
+  ore.userData.collected=false;
+  ore.visible=false;
+  refreshMineVisibility();
+}
+
+function onKeyDown(e){
+  if(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  switch(e.code){
+    case 'Escape':
+      if(activePanel){
+        setPanel(activePanel);
+      }
+      break;
+    case 'KeyW': moveForward=true; break;
+    case 'KeyS': moveBackward=true; break;
+    case 'KeyA': moveLeft=true; break;
+    case 'KeyD': moveRight=true; break;
+    case 'ShiftLeft': running=true; break;
+    case 'Space':
+      if(canJump){
+        const noBoost = inParkourZone(yawObject.position.x, yawObject.position.z);
+        const jumpMult = noBoost ? 1.0 : JUMP_LEVELS[jumpLevel-1].multiplier;
+        velocity.y = 9 * jumpMult;
+        canJump = false;
+      }
+      break;
+    case 'KeyI': setPanel('inventory'); break;
+    case 'KeyO': setPanel('shop'); break;
+    case 'KeyU': setPanel('upgrades'); break;
+    case 'KeyF': setPanel('friends'); break;
+    case 'KeyX': setPanel('online'); break;
+  }
+}
+function onKeyUp(e){
+  switch(e.code){
+    case 'KeyW': moveForward=false; break;
+    case 'KeyS': moveBackward=false; break;
+    case 'KeyA': moveLeft=false; break;
+    case 'KeyD': moveRight=false; break;
+    case 'ShiftLeft': running=false; break;
+  }
+}
+
+// checkCollision agora sabe a altura dos pés do jogador (feetY). Pra obstáculos
+// normais (prédios, paredes), bloqueia sempre, em qualquer altura — igual antes.
+// Pra plataformas do parkour, só bloqueia enquanto o jogador ainda está bem
+// abaixo do topo dela; perto do topo (ou já em cima), libera a passagem, o que
+// dá espaço suficiente durante o pulo pra "entrar" na plataforma e pousar nela,
+// sem virar bloco fantasma quando você só está andando por baixo.
+function checkCollision(nx, nz, feetY){
+  for(const obj of collisionObjects){
+    const dx = Math.abs(nx - obj.position.x);
+    const dz = Math.abs(nz - obj.position.z);
+    if(dx < obj.userData.halfW && dz < obj.userData.halfD){
+      if(obj.userData.isPlatform){
+        if(feetY < obj.userData.topY - 1.5) return true;
+      } else {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  const frameNow = performance.now();
+  fpsFrames++;
+  if(frameNow - fpsWindowStart >= 500){
+    const elapsed = Math.max(1, frameNow - fpsWindowStart);
+    currentFPS = Math.max(0, Math.min(240, Math.round((fpsFrames * 1000) / elapsed)));
+    const fpsEl = document.getElementById('fpsHud');
+    if(fpsEl) fpsEl.textContent = String(currentFPS);
+    fpsFrames = 0;
+    fpsWindowStart = frameNow;
+  }
+  lastFrameTime = frameNow;
+  const delta = Math.min(clock.getDelta(), 0.1);
+
+  if(!activePanel && document.getElementById('ultimateOverlay').style.display !== 'flex'){
+    // dentro da torre de parkour, os upgrades de velocidade e pulo não funcionam —
+    // é no talento mesmo
+    const noBoost = inParkourZone(yawObject.position.x, yawObject.position.z);
+    const baseSpeedMult = noBoost ? 1.0 : SPEED_LEVELS[speedLevel-1].multiplier;
+    const hyperSpeedMult = HYPER_SPEED_LEVELS[Math.max(0,Math.min(99,hyperSpeedLevel-1))].multiplier;
+    // Limite técnica para evitar velocidade absurda/quebrar a física do jogo.
+    const speedMult = noBoost ? 1.0 : Math.min(12, baseSpeedMult * hyperSpeedMult);
+
+    // Reator de Energia: correr gasta stamina de verdade; sem stamina, não dá
+    // pra correr até recuperar um pouco. O upgrade aumenta a capacidade máxima.
+    const maxStamina = 100 * ENERGY_LEVELS[Math.max(0,Math.min(ENERGY_LEVELS.length-1,energyLevel-1))].multiplier;
+    const isMoving = moveForward || moveBackward || moveLeft || moveRight;
+    const isSprinting = running && isMoving && !exhausted;
+    if(isSprinting){
+      stamina = Math.max(0, stamina - 18*delta);
+      if(stamina <= 0) exhausted = true;
+    } else {
+      stamina = Math.min(maxStamina, stamina + 14*delta);
+      if(exhausted && stamina >= maxStamina*0.2) exhausted = false;
+    }
+    const effectiveRunning = running && !exhausted;
+    const speed = (effectiveRunning ? 14 : 7) * speedMult;
+
+    velocity.x -= velocity.x * 8 * delta;
+    velocity.z -= velocity.z * 8 * delta;
+    velocity.y -= 20 * delta;
+
+    direction.z = Number(moveForward) - Number(moveBackward);
+    direction.x = Number(moveRight) - Number(moveLeft);
+    direction.normalize();
+
+    if(moveForward||moveBackward) velocity.z -= direction.z * speed * 10 * delta;
+    if(moveLeft||moveRight) velocity.x -= direction.x * speed * 10 * delta;
+
+    forwardVec.set(0,0,-1).applyQuaternion(yawObject.quaternion);
+    rightVec.set(1,0,0).applyQuaternion(yawObject.quaternion);
+
+    const moveX = (forwardVec.x * -velocity.z + rightVec.x * -velocity.x) * delta;
+    const moveZ = (forwardVec.z * -velocity.z + rightVec.z * -velocity.x) * delta;
+
+    const newX = yawObject.position.x + moveX;
+    const newZ = yawObject.position.z + moveZ;
+    const feetYNow = yawObject.position.y - 2;
+
+    if(!checkCollision(newX, yawObject.position.z, feetYNow)) yawObject.position.x = newX;
+    if(!checkCollision(yawObject.position.x, newZ, feetYNow)) yawObject.position.z = newZ;
+
+    const prevEyeY = yawObject.position.y;
+    yawObject.position.y += velocity.y * delta;
+    const landed = resolveGroundY(prevEyeY, yawObject.position.y, velocity.y, yawObject.position.x, yawObject.position.z);
+    if(landed !== null){
+      yawObject.position.y = landed + 2;
+      velocity.y = 0;
+      canJump = true;
+    }
+    if(yawObject.position.y < 2){
+      yawObject.position.y = 2;
+      velocity.y = 0;
+      canJump = true;
+    }
+
+    yawObject.position.x = Math.max(-145, Math.min(145, yawObject.position.x));
+    yawObject.position.z = Math.max(-145, Math.min(145, yawObject.position.z));
+
+    for(const crate of crates){
+      if(!crate.userData.collected){
+        const cdx = crate.position.x - yawObject.position.x, cdz = crate.position.z - yawObject.position.z;
+        if((cdx*cdx + cdz*cdz) < 10000){
+          crate.rotation.y += delta * 2;
+          crate.position.y = 1 + Math.sin(performance.now()*0.003 + crate.id) * 0.15;
+        }
+        const dx = crate.position.x - yawObject.position.x;
+        const dz = crate.position.z - yawObject.position.z;
+        // Ímã de Relíquias: puxa o item lentamente na direção do jogador se
+        // estiver dentro do alcance do ímã (mas fora do alcance normal de coleta).
+        const magnetR = MAGNET_LEVELS[Math.max(0,Math.min(MAGNET_LEVELS.length-1,magnetLevel-1))].radius;
+        const pickR = PICKUP_LEVELS[pickupLevel-1].radius;
+        const distNow = Math.sqrt(dx*dx+dz*dz);
+        if(magnetLevel > 1 && distNow < magnetR && distNow > pickR){
+          const pull = Math.min(distNow - pickR, 10*delta);
+          crate.position.x -= (dx/distNow)*pull;
+          crate.position.z -= (dz/distNow)*pull;
+        }
+        if((dx*dx+dz*dz) < PICKUP_LEVELS[pickupLevel-1].radius * PICKUP_LEVELS[pickupLevel-1].radius){
+          crate.userData.collected = true;
+          crate.visible = false;
+          score++;
+          scoreEl.textContent = score;
+          if(FRONTIER_HOOKS.addXP) FRONTIER_HOOKS.addXP(18);
+          const rarityKey = crate.userData.rarityKey;
+          lastCollectedRarity = RARITIES[rarityKey].label;
+          const item = rollItem(rarityKey);
+          addToInventory(rarityKey, item, false);
+          const copies = rollDropCopies();
+          for(let c=1; c<copies; c++){ addToInventory(rarityKey, rollItem(rarityKey)); }
+          showPickupMessage(rarityKey, item, false, copies);
+          const respawnDelay = (8000 + Math.random()*7000) * RESPAWN_LEVELS[respawnLevel-1].timeFactor;
+          setTimeout(() => respawnCrate(crate), respawnDelay);
+        }
+      }
+    }
+
+    // Só processa os minérios realmente ativos/próximos.
+    if(performance.now()-lastMineCullAt>MINE_CULL_INTERVAL_MS || ((yawObject.position.x-mineCullPlayerX)**2 + (yawObject.position.z-mineCullPlayerZ)**2)>64){
+      refreshMineVisibility(true);
+    }
+    const pickupRadius = PICKUP_LEVELS[pickupLevel-1].radius;
+    const pickupRadius2 = pickupRadius*pickupRadius;
+    for(const ore of mineActiveOres){
+      if(!ore.visible || ore.userData.collected) continue;
+      const rareBoost = ore.userData.superGreen ? 1.9 : (ore.userData.ultraRare ? 1.55 : 1.2);
+      const rareTilt = ore.userData.superGreen ? 0.8 : (ore.userData.ultraRare ? 0.65 : 0.5);
+      ore.rotation.y += delta * rareBoost;
+      ore.rotation.x += delta * rareTilt;
+      const dx = ore.position.x - yawObject.position.x;
+      const dz = ore.position.z - yawObject.position.z;
+      const magnetR = MAGNET_LEVELS[Math.max(0,Math.min(MAGNET_LEVELS.length-1,magnetLevel-1))].radius;
+      const oreDistNow = Math.sqrt(dx*dx+dz*dz);
+      if(magnetLevel > 1 && oreDistNow < magnetR && oreDistNow > pickupRadius){
+        const pull = Math.min(oreDistNow - pickupRadius, 10*delta);
+        ore.position.x -= (dx/oreDistNow)*pull;
+        ore.position.z -= (dz/oreDistNow)*pull;
+      }
+      if((dx*dx + dz*dz) < pickupRadius2){
+          ore.userData.collected = true;
+          ore.visible = false;
+          score++;
+          scoreEl.textContent = score;
+          if(FRONTIER_HOOKS.addXP) FRONTIER_HOOKS.addXP(24);
+          countedOrePickups++; if(FRONTIER_HOOKS.recordOrePickup) FRONTIER_HOOKS.recordOrePickup();
+          const rarityKey = ore.userData.rarityKey;
+          lastCollectedRarity = '⛏ '+RARITIES[rarityKey].label;
+          const mineMult = MINEBONUS_LEVELS[mineBonusLevel-1].multiplier;
+          const hyperOreMult = HYPER_ORE_LEVELS[Math.max(0,Math.min(99,hyperOreLevel-1))].multiplier;
+          const item = { ...rollOre(rarityKey) };
+          item.price = Math.max(0, Math.round(item.price * mineMult * hyperOreMult));
+          addToInventory(rarityKey, item, true);
+          const copies = rollDropCopies();
+          for(let c=1; c<copies; c++){
+            const bonusItem = { ...rollOre(rarityKey) };
+            bonusItem.price = Math.max(0, Math.round(bonusItem.price * mineMult * hyperOreMult));
+            addToInventory(rarityKey, bonusItem, true);
+          }
+          showPickupMessage(rarityKey, item, true, copies);
+          const respawnDelay = (10000 + Math.random()*10000) * RESPAWN_LEVELS[respawnLevel-1].timeFactor;
+          setTimeout(() => respawnOre(ore), respawnDelay);
+          refreshMineVisibility(true);
+        }
+    }
+
+    // troféu do parkour — só aparece de novo 10 minutos depois de ser pego
+    if(parkourTrophy){
+      const onCooldown = Date.now() < parkourCooldownUntil;
+      parkourTrophy.visible = !onCooldown;
+      if(!onCooldown){
+        parkourTrophy.rotation.y += delta * 1.5;
+        parkourTrophy.rotation.x += delta * 0.6;
+        parkourTrophy.position.y = parkourTrophy.userData.baseY + Math.sin(performance.now()*0.0025) * 0.3;
+        const dx = parkourTrophy.position.x - yawObject.position.x;
+        const dz = parkourTrophy.position.z - yawObject.position.z;
+        const dy = parkourTrophy.position.y - yawObject.position.y;
+        if(Math.sqrt(dx*dx+dy*dy+dz*dz) < 2.5){
+          money += 1000;
+          moneyHudEl.textContent = formatMoney(money);
+          parkourCooldownUntil = Date.now() + 10*60*1000;
+          showSaleMessage({ name:'🏆 Prêmio do Parkour conquistado: +$1000! Volte em 10 minutos' }, 0, true);
+          autoSave();
+        }
+      }
+    }
+  }
+
+  const nowPerf = performance.now();
+  if(nowPerf - PERF.hudAt > PERF.hudMs){ updateEnhancedHUD(); PERF.hudAt=nowPerf; }
+  if(nowPerf - PERF.miniAt > PERF.miniMs){ drawMinimap(); PERF.miniAt=nowPerf; }
+  if(nowPerf - PERF.compassAt > PERF.compassMs){ updateCompass(); PERF.compassAt=nowPerf; }
+  if(FRONTIER_HOOKS.mpFrame) FRONTIER_HOOKS.mpFrame(delta);
+  renderer.render(scene, camera);
+}
+
+
+/* ===== FRONTIER ULTIMATE EXPANSION ===== */
+(function(){
+  const KEY='frontier_ultimate_v1';
+  const state={xp:0,level:1,combo:1,comboT:0,weather:'Limpo',weatherT:0,time:8*60,quest:null,questStreak:0,achievements:[],event:null,eventT:0,coinsEarned:0,itemsCollected:0,oresCollected:0,exploration:0,interactions:0,discoveredPlaces:[],guideRewardClaimed:false,shrineCooldownUntil:0};
+  const $=id=>document.getElementById(id);
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const toast=(msg)=>{const e=$('eventBanner'); if(!e)return; e.textContent=msg;e.style.opacity='1';e.style.transform='translate(-50%,0)';clearTimeout(e._t);e._t=setTimeout(()=>{e.style.opacity='0';e.style.transform='translate(-50%,-20px)'},2600)};
+  const achToast=(msg)=>{const e=$('achievementToast');if(!e)return;e.textContent='🏆 '+msg;e.style.opacity='1';e.style.transform='translate(-50%,0)';clearTimeout(e._t);e._t=setTimeout(()=>{e.style.opacity='0';e.style.transform='translate(-50%,20px)'},2800)};
+
+  const MAX_PLAYER_LEVEL=100;
+  function xpNeed(l){return Math.round(100*Math.pow(1.18,Math.max(0,l-1)));}
+  function addXP(n){
+    const boost=(typeof XPBOOST_LEVELS!=='undefined' && XPBOOST_LEVELS[xpBoostLevel-1]) ? XPBOOST_LEVELS[xpBoostLevel-1].multiplier : 1;
+    const hyperXP=(typeof HYPER_XP_LEVELS!=='undefined' && HYPER_XP_LEVELS[hyperXPPowerLevel-1]) ? HYPER_XP_LEVELS[hyperXPPowerLevel-1].multiplier : 1;
+    n=Math.max(0,Math.round(n * boost * hyperXP));
+    if(state.level>=MAX_PLAYER_LEVEL){state.level=MAX_PLAYER_LEVEL;state.xp=xpNeed(MAX_PLAYER_LEVEL);renderBar();return;}
+    state.xp+=n;
+    while(state.level<MAX_PLAYER_LEVEL && state.xp>=xpNeed(state.level)){
+      state.xp-=xpNeed(state.level); state.level++;
+      const reward=state.level%5===0?500:75; money+=Math.round(reward*CASHCORE_LEVELS[cashCoreLevel-1].multiplier);
+      toast('✨ Nível '+state.level+' alcançado! +$'+formatMoney(Math.round(reward*CASHCORE_LEVELS[cashCoreLevel-1].multiplier)));
+    }
+    if(state.level>=MAX_PLAYER_LEVEL){state.level=MAX_PLAYER_LEVEL;state.xp=xpNeed(MAX_PLAYER_LEVEL);toast('👑 NÍVEL 100 — MESTRE DA FRONTEIRA!');}
+    renderBar(); save();
+  }
+  FRONTIER_HOOKS.addXP=addXP;
+  FRONTIER_HOOKS.recordOrePickup=()=>{ state.oresCollected++; progressQuest('ore',1); };
+  FRONTIER_HOOKS.getXPState=()=>({xp:state.xp,level:state.level,need:xpNeed(state.level)});
+
+  function renderBar(){
+    const need=xpNeed(state.level); $('ultLevel').textContent=state.level>=MAX_PLAYER_LEVEL?'Nv. 100 MAX':'Nv. '+state.level; $('ultXpText').textContent=state.level>=MAX_PLAYER_LEVEL?'MAX':state.xp+'/'+need; $('ultXpFill').style.width=(state.level>=MAX_PLAYER_LEVEL?100:(state.xp/need*100)).toFixed(1)+'%'; $('ultCombo').textContent='x'+state.combo.toFixed(1); $('ultWeather').textContent=state.weather;
+  }
+  function save(){
+    try{localStorage.setItem(KEY,packSigned({...state,event:null,savedAt:Date.now()}))}catch(e){}
+    if(typeof autoSave==='function') autoSave();
+  }
+  function normalizeWorldState(){
+    const validIds=PORTALS.map(portal=>portal.id);
+    state.discoveredPlaces=Array.isArray(state.discoveredPlaces)?[...new Set(state.discoveredPlaces.filter(id=>validIds.includes(id)))]:[];
+    state.guideRewardClaimed=Boolean(state.guideRewardClaimed);
+    state.shrineCooldownUntil=Math.max(0,Number(state.shrineCooldownUntil)||0);
+  }
+  function load(){
+    try{const x=unpackSigned(localStorage.getItem(KEY)); if(x) Object.assign(state,x)}catch(e){}
+    normalizeWorldState();
+    state.level=clamp(Math.max(1,state.level||1),1,MAX_PLAYER_LEVEL); state.xp=Math.max(0,state.xp||0); if(state.level===MAX_PLAYER_LEVEL)state.xp=xpNeed(MAX_PLAYER_LEVEL); renderBar();
+  }
+
+  const QUEST_TYPES=[
+    {id:'collect',name:'Caçador de relíquias',text:'Colete {n} itens',target:8, reward:90},
+    {id:'ore',name:'Fome de minério',text:'Minere {n} minérios',target:5, reward:130},
+    {id:'sell',name:'Mercador de fronteira',text:'Venda itens por ${n}',target:250, reward:170},
+    {id:'travel',name:'Explorador',text:'Ande {n} metros',target:700, reward:110},
+    {id:'rare',name:'Olho raro',text:'Pegue um item Difícil ou melhor',target:1, reward:180},
+    {id:'parkour',name:'Desafio vertical',text:'Conquiste o troféu do Parkour',target:1, reward:260},
+    {id:'portal',name:'Cartógrafo',text:'Descubra {n} portais',target:3, reward:220},
+    {id:'shrine',name:'Bênção da fronteira',text:'Visite o santuário',target:1, reward:150}
+  ];
+  function newQuest(){const t=QUEST_TYPES[Math.floor(Math.random()*QUEST_TYPES.length)];state.quest={...t,progress:0};renderQuest();save()}
+  function questText(q){return q.text.replace('{n}',q.target).replace('${n}','$'+q.target)}
+  function renderQuest(){const q=state.quest;if(!q){$('questName').textContent='Sem missão';return} $('questName').textContent=q.name+' — '+questText(q); const p=clamp(q.progress,0,q.target); $('questProgress').textContent=p+' / '+q.target; $('questReward').textContent='+'+q.reward+' XP'; $('questBarFill').style.width=(p/q.target*100)+'%'}
+  function progressQuest(type,value=1){const q=state.quest;if(!q||q.id!==type)return; q.progress=Math.min(q.target,q.progress+value); if(q.progress>=q.target){addXP(q.reward); money+=q.reward;moneyHudEl.textContent=formatMoney(money);state.questStreak++;achToast('Missão concluída: '+q.name);toast('🎯 +$'+q.reward+' • +'+q.reward+' XP');newQuest()} else renderQuest();save()}
+
+  const ACH=[
+    ['first','Primeiro passo',()=>score>=1,'Colete seu primeiro item'],
+    ['rich','Mão de ouro',()=>money>=1000,'Chegue a $1.000'],
+    ['collector','Colecionador',()=>inventory.length>=20,'Tenha 20 itens'],
+    ['miner','Mestre da mina',()=>state.oresCollected>=10,'Minere 10 vezes'],
+    ['rare','Caçador raro',()=>state.itemsCollected>0&&lastCollectedRarity&&/Difícil|Quase|Preto|Verde/.test(lastCollectedRarity),'Encontre uma raridade alta'],
+    ['level10','Veterano',()=>state.level>=10,'Alcance o nível 10'],
+    ['streak','Combo insano',()=>state.combo>=5,'Atinja combo x5'],
+    ['park','Conquistador',()=>Date.now()<parkourCooldownUntil,'Pegue o troféu do Parkour'],
+    ['cartographer','Cartógrafo',()=>Array.isArray(state.discoveredPlaces)&&state.discoveredPlaces.length>=3,'Descubra os três portais'],
+    ['shrine','Abençoado',()=>state.interactions>0&&state.shrineCooldownUntil>Date.now(),'Receba a bênção do santuário']
+  ];
+  function checkAchievements(){for(const a of ACH){if(state.achievements.includes(a[0]))continue;let ok=false;try{ok=a[2]()}catch(e){}if(ok){state.achievements.push(a[0]);achToast('Conquista: '+a[1]+' — '+a[3]);addXP(80)}}}
+
+  function wrapSave(){
+    const oldGet=getSaveData;
+    if(typeof oldGet==='function'&&!oldGet.__ultimate){
+      const fn=function(){const d=oldGet();d.ultimate=Object.assign({},state,{event:null});return d};fn.__ultimate=true;getSaveData=fn;
+    }
+    const oldApply=applySaveData;
+    if(typeof oldApply==='function'&&!oldApply.__ultimate){
+      const fn=function(d){oldApply(d);if(d&&d.ultimate)Object.assign(state,d.ultimate);normalizeWorldState();renderBar();renderQuest();};fn.__ultimate=true;applySaveData=fn;
+    }
+  }
+
+  // Day/night + weather
+  function weatherStep(dt){
+    state.time=(state.time+dt*2.1)%1440;
+    state.weatherT-=dt;
+    if(state.weatherT<=0){state.weatherT=45+Math.random()*50;const r=Math.random();state.weather=r<.62?'Limpo':r<.8?'Nublado':r<.94?'Chuva':'Tempestade';renderBar();toast('🌦️ O clima mudou: '+state.weather)}
+    const t=state.time;const sun=Math.max(0,Math.sin((t-360)/720*Math.PI));
+    if(scene){
+      const night=1-sun;
+      const sky=night>.72?0x09111f:night>.35?0x35536b:0x87ceeb;
+      scene.background.setHex(sky); if(scene.fog)scene.fog.color.setHex(sky);
+    }
+    const rain=state.weather==='Chuva'||state.weather==='Tempestade';$('weatherFx').style.opacity=rain?String(state.weather==='Tempestade'?.16:.09):'0';
+  }
+
+  // Dynamic event: supply drop that gives a temporary bonus when reached.
+  function spawnEvent(){
+    if(!scene||state.event) return;
+    const geo=new THREE.IcosahedronGeometry(1.25,1);const mat=new THREE.MeshStandardMaterial({color:0xff8a00,emissive:0xff4d00,emissiveIntensity:1.6,metalness:.4});
+    const o=new THREE.Mesh(geo,mat);o.position.set((Math.random()-.5)*210,2,(Math.random()-.5)*210);o.userData.ultEvent=true;scene.add(o);state.event=o;state.eventT=28;toast('☄️ Evento: PODER caiu no mapa!');
+  }
+  function eventStep(dt){
+    // Radar de Eventos: cada nível aumenta a chance do evento "PODER" cair no mapa.
+    const luckBonus = (typeof EVENTLUCK_LEVELS!=='undefined' && EVENTLUCK_LEVELS[eventLuckLevel-1]) ? EVENTLUCK_LEVELS[eventLuckLevel-1].chance : 0;
+    if(!state.event&&Math.random()<(dt/55)*(1+luckBonus*10))spawnEvent();
+    if(!state.event)return;
+    state.event.rotation.x+=dt*1.4;state.event.rotation.y+=dt*2.2;state.event.position.y=2+Math.sin(performance.now()*.003)*.3;state.eventT-=dt;
+    const dx=state.event.position.x-yawObject.position.x,dz=state.event.position.z-yawObject.position.z;
+    if(Math.hypot(dx,dz)<3){state.event.removeFromParent();state.event=null;money+=350;addXP(300);state.combo=Math.min(8,state.combo+.8);state.comboT=8;toast('💥 PODER coletado! +$350 e +300 XP');save()}
+    if(state.eventT<=0){state.event.removeFromParent();state.event=null}
+  }
+
+  function comboStep(dt){if(state.combo>1){state.comboT-=dt;if(state.comboT<=0){state.combo=Math.max(1,state.combo-.15);state.comboT=.7}}}
+  function movementXP(dt){if(!yawObject)return; const v=Math.hypot(velocity.x,velocity.z); if(v>1) {state.exploration+=v*dt; progressQuest('travel',v*dt>1?v*dt:0); if(Math.floor(state.exploration)%80===0) addXP(1)} }
+
+  const PORTALS=[
+    {id:'camp',name:'Acampamento',icon:'🏕️',color:0x22d3ee,x:0,z:10,y:2,description:'Ponto seguro no centro do campo.'},
+    {id:'mine',name:'Entrada da Mina',icon:'⛏️',color:0xa78bfa,x:-120,z:-97,y:2,description:'Acesso rápido aos minérios raros.'},
+    {id:'parkour',name:'Torre de Parkour',icon:'🏆',color:0xfbbf24,x:101,z:137,y:4,description:'Começo do desafio vertical.'}
+  ];
+  let nearbyInteractable=null;
+
+  function makeWorldMarker(name,x,z,color,kind){
+    const group=new THREE.Group();group.name=name;group.position.set(x,0,z);group.userData.interactable=kind;
+    const base=new THREE.Mesh(new THREE.CylinderGeometry(1.15,1.35,.25,20),new THREE.MeshStandardMaterial({color:0x101827,metalness:.65,roughness:.3}));
+    base.position.y=.12;group.add(base);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(.92,.09,8,28),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:1.6,metalness:.35,roughness:.25}));
+    ring.rotation.x=Math.PI/2;ring.position.y=.34;ring.userData.markerRing=true;group.add(ring);
+    const crown=new THREE.Mesh(new THREE.OctahedronGeometry(.42,0),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:1.8,metalness:.25,roughness:.2}));
+    crown.position.y=1.35;group.add(crown);
+    const light=new THREE.PointLight(color,1.2,9);light.position.y=1.2;group.add(light);
+    scene.add(group);return group;
+  }
+  function addGuide(){
+    if(!scene||scene.getObjectByName('FrontierGuide'))return;
+    const g=new THREE.Group();g.name='FrontierGuide';g.userData.interactable='guide';
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(.55,.7,1.6,10),new THREE.MeshStandardMaterial({color:0x2563eb,roughness:.65}));body.position.y=.9;
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.45,12,10),new THREE.MeshStandardMaterial({color:0xf0c7a4,roughness:.8}));head.position.y=2;g.add(body,head);
+    const beacon=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,.9,8),new THREE.MeshStandardMaterial({color:0x22d3ee,emissive:0x22d3ee,emissiveIntensity:2}));beacon.position.y=2.8;g.add(beacon);g.position.set(18,0,-18);scene.add(g);
+    for(const portal of PORTALS) makeWorldMarker('Portal_'+portal.id,portal.x,portal.z,portal.color,'portal:'+portal.id);
+    makeWorldMarker('FrontierShrine',36,24,0xfbbf24,'shrine');
+  }
+  function closestInteractable(){
+    if(!scene||!yawObject)return null;
+    let closest=null, best=5.2;
+    scene.traverse(obj=>{
+      if(!obj.userData.interactable)return;
+      const d=Math.hypot(yawObject.position.x-obj.position.x,yawObject.position.z-obj.position.z);
+      if(d<best){best=d;closest=obj}
+    });
+    return closest?{object:closest,distance:best}:null;
+  }
+  function guideStep(){
+    if(!scene||!yawObject)return;
+    const g=scene.getObjectByName('FrontierGuide');
+    if(g)g.rotation.y=Math.atan2(yawObject.position.x-g.position.x,yawObject.position.z-g.position.z);
+    scene.traverse(obj=>{if(obj.userData.markerRing)obj.rotation.z+=.008});
+    const nearest=closestInteractable(),h=$('interactionHint');
+    nearbyInteractable=nearest?nearest.object:null;
+    if(!nearest||activePanel||$('ultimateOverlay').style.display==='flex'){h.style.opacity='0';return}
+    const kind=nearest.object.userData.interactable;
+    if(kind==='guide')h.textContent='E — conversar com o Guia';
+    else if(kind==='shrine')h.textContent=Date.now()<state.shrineCooldownUntil?'Santuário — bênção recarregando':'E — receber bênção do Santuário';
+    else h.textContent='E — usar portal: '+PORTALS.find(p=>kind==='portal:'+p.id)?.name;
+    h.style.opacity='1';
+  }
+  function discoverPortal(id){
+    if(!state.discoveredPlaces.includes(id)){
+      state.discoveredPlaces.push(id);progressQuest('portal',1);
+      toast('🧭 Novo ponto descoberto: '+PORTALS.find(p=>p.id===id).name);
+      save();
+    }
+  }
+  function openTravelMenu(title){
+    const choices=PORTALS.map(p=>`<button class="ultBtn" data-travel="${p.id}">${p.icon} ${p.name}</button>`).join('');
+    openModal(title,`<div class="ultSub">Viagem rápida gratuita entre pontos de interesse.</div><div class="ultGrid">${PORTALS.map(p=>`<div class="ultCard"><b>${p.icon} ${p.name}</b><span>${p.description}</span></div>`).join('')}</div><div class="ultActions">${choices}</div>`);
+    $('ultModal').querySelectorAll('[data-travel]').forEach(btn=>btn.addEventListener('click',()=>teleportTo(btn.dataset.travel)));
+  }
+  function teleportTo(id){
+    const portal=PORTALS.find(p=>p.id===id);
+    if(!portal||!yawObject)return;
+    yawObject.position.set(portal.x,portal.y,portal.z);
+    velocity.set(0,0,0);moveForward=moveBackward=moveLeft=moveRight=running=false;
+    canJump=false;discoverPortal(id);closeModal();
+    $('hint').style.display='none';
+    toast('✨ Chegou em '+portal.name);
+  }
+  function interact(){
+    const target=closestInteractable();
+    if(!target)return;
+    const kind=target.object.userData.interactable;state.interactions++;
+    if(kind==='guide'){
+      const reward=state.guideRewardClaimed?'':`<div class="ultCard" style="margin-top:10px"><b>🎁 Presente de boas-vindas</b><span>+20 XP por sua primeira visita.</span></div>`;
+      openModal('GUIA DA FRONTEIRA',`<div class="ultCard"><b>🧭 Bem-vindo, explorador!</b><span>Use os portais para viajar entre o Acampamento, a Mina e a Torre de Parkour. Procure também o evento ☄️ e acompanhe sua missão no painel Q.</span></div><div class="ultCard" style="margin-top:10px"><b>💡 Dica</b><span>Itens raros valem mais. Upgrades de Sorte e Comerciante ajudam bastante.</span></div>${reward}<div class="ultActions"><button class="ultBtn" id="guideTravelBtn">🌀 Viajar para outra região</button></div>`);
+      $('guideTravelBtn').onclick=()=>openTravelMenu('PORTAIS DA FRONTEIRA');
+      if(!state.guideRewardClaimed){state.guideRewardClaimed=true;addXP(20)}
+      save();return;
+    }
+    if(kind.startsWith('portal:')){
+      const portalId=kind.slice(7);discoverPortal(portalId);openTravelMenu('PORTAL — '+PORTALS.find(p=>p.id===portalId).name);return;
+    }
+    if(kind==='shrine'){
+      const remaining=state.shrineCooldownUntil-Date.now();
+      if(remaining>0){toast('⏳ O santuário estará pronto em '+Math.ceil(remaining/60000)+' min.');return}
+      const reward=Math.round(250*CASHCORE_LEVELS[cashCoreLevel-1].multiplier);
+      money+=reward;moneyHudEl.textContent=formatMoney(money);state.shrineCooldownUntil=Date.now()+5*60*1000;
+      addXP(100);progressQuest('shrine');checkAchievements();autoSave();
+      toast('✨ Bênção recebida: +$'+formatMoney(reward)+' e +100 XP');return;
+    }
+  }
+  FRONTIER_HOOKS.interact=interact;
+  FRONTIER_HOOKS.drawPlaces=(ctx,ox,oz,scale)=>{
+    for(const portal of PORTALS){
+      const px=ox+portal.x*scale,pz=oz+portal.z*scale;
+      if(px<0||px>300||pz<0||pz>300)continue;
+      ctx.beginPath();ctx.arc(px,pz,5,0,Math.PI*2);
+      ctx.fillStyle=state.discoveredPlaces.includes(portal.id)?'#67e8f9':'rgba(255,255,255,.55)';
+      ctx.fill();ctx.strokeStyle='#07111d';ctx.lineWidth=2;ctx.stroke();
+    }
+    const shrineX=ox+36*scale,shrineZ=oz+24*scale;
+    if(shrineX>=0&&shrineX<=300&&shrineZ>=0&&shrineZ<=300){
+      ctx.fillStyle=Date.now()<state.shrineCooldownUntil?'#64748b':'#fbbf24';
+      ctx.fillRect(shrineX-4,shrineZ-4,8,8);
+    }
+  };
+  function openModal(title,body){$('ultModal').innerHTML=`<h2>${title}</h2><div class="ultSub">FRONTIER // ULTIMATE SYSTEM</div>${body}<div class="ultActions"><button class="ultBtn alt" id="ultClose">Fechar</button></div>`;$('ultimateOverlay').style.display='flex';if(document.pointerLockElement===document.body)document.exitPointerLock();$('ultClose').onclick=closeModal}
+  function closeModal(){$('ultimateOverlay').style.display='none';$('hint').style.display='none';if(!('ontouchstart'in window)&&document.pointerLockElement!==document.body)document.body.requestPointerLock()}
+  function openUltimatePanel(){
+    const achHtml=ACH.map(a=>`<div class="ultCard"><b>${state.achievements.includes(a[0])?'✅':'⬜'} ${a[1]}</b><span>${a[3]}</span></div>`).join('');
+    const q=state.quest?`<div class="ultCard"><b>🎯 ${state.quest.name}</b><span>${questText(state.quest)} — ${state.quest.progress}/${state.quest.target} • recompensa $${state.quest.reward}</span></div>`:'<div class="ultCard"><b>Sem missão</b></div>';
+    openModal('FRONTIER HUB',`<div class="ultGrid"><div class="ultCard"><b>⭐ Nível ${state.level}${state.level>=MAX_PLAYER_LEVEL?' MAX':''}</b><span>${state.level>=MAX_PLAYER_LEVEL?'DOMÍNIO COMPLETO':state.xp+'/'+xpNeed(state.level)}</span></div><div class="ultCard"><b>🧩 Upgrades</b><span>${Object.values(UPGRADE_CATEGORIES).reduce((a,c)=>a+c.get(),0)} níveis</span></div><div class="ultCard"><b>🔥 Melhor combo</b><span>x${state.combo.toFixed(1)}</span></div></div><h3 style="margin:18px 0 8px">Missão</h3>${q}<h3 style="margin:18px 0 8px">Conquistas</h3><div class="ultGrid">${achHtml}</div><div class="ultActions"><button class="ultBtn" id="newQuestBtn">🎯 Nova missão</button><button class="ultBtn alt" id="hardResetBtn">Reiniciar sistemas Ultimate</button></div>`);
+    $('newQuestBtn').onclick=()=>{newQuest();openUltimatePanel()};
+    $('hardResetBtn').onclick=()=>{if(confirm('Resetar apenas XP, missões, eventos e conquistas?')){state.xp=0;state.level=1;state.combo=1;state.achievements=[];state.quest=null;newQuest();save();openUltimatePanel()}};
+  }
+
+  // Keybinds Q = hub, B = achievements/hub, M = map quick view, E = guide.
+  const keys=(e)=>{if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))return; if(e.code==='Escape'&&$('ultimateOverlay').style.display==='flex')closeModal(); if(e.repeat)return; if(e.code==='KeyQ'){e.preventDefault();if(!activePanel)openUltimatePanel()} if(e.code==='KeyV'&&!activePanel&&typeof yawObject!=='undefined'){const force=7*DASH_LEVELS[dashLevel-1].multiplier;velocity.x+=-Math.sin(yawObject.rotation.y)*force;velocity.z+=-Math.cos(yawObject.rotation.y)*force;toast('💨 DASH!');} if(e.code==='KeyE'){interact()} if(e.code==='KeyB'){e.preventDefault();if(!activePanel)openUltimatePanel()} if(e.code==='KeyM'&&!activePanel){e.preventDefault();const map=$('minimap');if(map){const hidden=map.style.display==='none';map.style.display=hidden?'block':'none';toast(hidden?'🗺️ Minimapa exibido':'🗺️ Minimapa escondido')}} };
+  document.addEventListener('keydown',keys);
+
+  // Gentle rain visual using a transparent CSS repeating gradient.
+  $('weatherFx').style.background='repeating-linear-gradient(110deg,transparent 0 14px,rgba(150,220,255,.35) 15px,transparent 16px 30px)';
+
+  // Monitor core game actions without replacing their logic.
+  let prevScore=0, prevMoney=0, prevCollectedOres=0, lastRareSeen='', monitorUiAt=0;
+  function monitor(){
+    const oldMoney=prevMoney, oldScore=prevScore, oldOreCount=prevCollectedOres;
+    if(score>oldScore){const delta=score-oldScore;state.itemsCollected+=delta;state.combo=Math.min(8,state.combo+0.35*delta);state.comboT=5;progressQuest('collect',delta)}
+    if(money>oldMoney){const delta=money-oldMoney;state.coinsEarned+=delta;progressQuest('sell',Math.max(0,delta))}
+    if(typeof ores!=='undefined'){ const deltaOre=Math.max(0,(score-oldScore)); /* ore pickups are tracked by the direct monitor hook below */ prevCollectedOres=countedOrePickups; }
+    prevScore=score; prevMoney=money
+    // Rare loot mission and achievements.
+    if(lastCollectedRarity&&lastCollectedRarity!==lastRareSeen&&/Difícil|Quase impossível|Preto/.test(lastCollectedRarity)){lastRareSeen=lastCollectedRarity;progressQuest('rare',1);}
+    checkAchievements();
+    if(performance.now()-monitorUiAt>350){ renderQuest(); renderBar(); monitorUiAt=performance.now(); }
+  }
+
+  // Monkey-patch pickup/sale messaging to reward the new meta-system.
+  const originalPickup=showPickupMessage;
+  if(originalPickup&&!originalPickup.__ultimate){
+    const f=function(...args){originalPickup(...args); const copies=args[3]||1; state.combo=Math.min(8,state.combo+0.15*copies);state.comboT=5;};f.__ultimate=true;showPickupMessage=f;
+  }
+  const originalSale=showSaleMessage;
+  if(originalSale&&!originalSale.__ultimate){const f=function(...args){originalSale(...args);if(args[2]===false) addXP(8)};f.__ultimate=true;showSaleMessage=f;}
+
+  // Sistemas secundários não precisam rodar 60 vezes por segundo.
+  // Rodar a lógica de clima/eventos/HUD a 10 Hz libera CPU para o WebGL.
+  let tickLast=performance.now();
+  function tick(){
+    const now=performance.now(),dt=Math.min(.2,(now-tickLast)/1000);tickLast=now;
+    try{weatherStep(dt);eventStep(dt);comboStep(dt);movementXP(dt);guideStep();monitor();}catch(e){}
+  }
+
+  load();wrapSave();if(!state.quest)newQuest();
+  setTimeout(()=>{addGuide();toast('🚀 Portais, santuário e viagem rápida disponíveis! E = interagir • Q = Hub');},500);
+  tick();
+  setInterval(tick,100);
+})();
+
+
+/* ===== FRONTIER MULTIPLAYER (room) + AVISO DE ATUALIZAÇÃO (db) ===== */
+(function(){
+  // Suba este número a cada versão nova publicada (e grave o mesmo número em meta/version no banco).
+  const BUILD_VERSION = 3;
+  const RANKS = [[1,'Iniciante','#9ca3af'],[5,'Explorador','#5cff9d'],[10,'Minerador','#22d3ee'],[20,'Veterano','#60a5fa'],[35,'Elite','#c084fc'],[50,'Mestre','#fbbf24'],[75,'Lenda','#f87171'],[100,'Mestre da Fronteira','#ffd84d']];
+  const ZONES = { campo:'📍 Campo', mina:'⛏ Mina', parkour:'🏆 Parkour' };
+  const MAX_AVATARS = 24;
+  const $ = id => document.getElementById(id);
+  const num = (v,min,max,def) => { v = Number(v); return Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : (def || 0); };
+  const cleanName = n => (String(n == null ? '' : n).replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩﻿]/g,'').trim().slice(0,20)) || 'Jogador';
+  const lvOf = v => Math.max(1, Math.min(100, Math.floor(num(v,1,100,1))));
+  function rankFor(lv){
+    lv = lvOf(lv);
+    let r = RANKS[0];
+    for(const x of RANKS){ if(lv >= x[0]) r = x; }
+    return { name:r[1], color:r[2] };
+  }
+  const myLevel = () => (FRONTIER_HOOKS.getXPState ? lvOf(FRONTIER_HOOKS.getXPState().level) : 1);
+  function zoneCode(){
+    if(!yawObject) return 'campo';
+    const x = yawObject.position.x, z = yawObject.position.z;
+    if(inMineAvoidZone(x,z)) return 'mina';
+    if(inParkourZone(x,z)) return 'parkour';
+    return 'campo';
+  }
+
+  let room = null;
+  let peersNow = [];
+  const avatars = new Map();
+  let lastSent = '';
+
+  // ---------- avatares ----------
+  const GEO = {
+    body: new THREE.CylinderGeometry(0.5, 0.6, 1.5, 10),
+    head: new THREE.SphereGeometry(0.4, 12, 10),
+    nose: new THREE.BoxGeometry(0.18, 0.18, 0.3)
+  };
+  function hashStr(t){ let h = 0; for(let i=0;i<t.length;i++){ h = (h*31 + t.charCodeAt(i)) | 0; } return Math.abs(h); }
+  function roundRect(g,x,y,w,h,r){
+    g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath();
+  }
+  function drawLabel(a, name, lv){
+    a.name = name; a.lv = lv;
+    const rk = rankFor(lv), c = a.canvas, g = c.getContext('2d');
+    g.clearRect(0,0,c.width,c.height);
+    g.fillStyle = 'rgba(5,10,18,.74)'; roundRect(g,4,4,c.width-8,c.height-8,22); g.fill();
+    g.strokeStyle = rk.color; g.lineWidth = 3; g.stroke();
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '700 40px system-ui,Arial,sans-serif'; g.fillStyle = '#ffffff'; g.fillText(name, c.width/2, 38, c.width-30);
+    g.font = '700 26px system-ui,Arial,sans-serif'; g.fillStyle = rk.color; g.fillText(rk.name + ' · Nv.' + lv, c.width/2, 82, c.width-30);
+    a.tex.needsUpdate = true;
+  }
+  function makeAvatar(name){
+    const color = new THREE.Color().setHSL((hashStr(name) % 360)/360, 0.6, 0.5);
+    const group = new THREE.Group();
+    const body = new THREE.Mesh(GEO.body, new THREE.MeshStandardMaterial({ color:color, roughness:0.7 }));
+    body.position.y = 0.85;
+    const head = new THREE.Mesh(GEO.head, new THREE.MeshStandardMaterial({ color:0xf0c7a4, roughness:0.8 }));
+    head.position.y = 1.95;
+    const nose = new THREE.Mesh(GEO.nose, new THREE.MeshStandardMaterial({ color:0x222222 }));
+    nose.position.set(0, 1.95, -0.4);
+    const canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 112;
+    const tex = new THREE.CanvasTexture(canvas);
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true }));
+    label.scale.set(3.2, 1.12, 1); label.position.y = 3.05;
+    group.add(body, head, nose, label);
+    return { group, body, head, nose, label, canvas, tex, name:'', lv:0, tx:0, ty:0, tz:0, ry:0 };
+  }
+  function removeAvatar(a){
+    scene.remove(a.group);
+    a.tex.dispose(); a.label.material.dispose(); a.body.material.dispose(); a.head.material.dispose(); a.nose.material.dispose();
+  }
+  function syncAvatars(){
+    if(!scene || !yawObject) return;
+    const me = yawObject.position;
+    const others = peersNow.filter(p => !p.isMe && p.kind === 'viewer' && p.presence && typeof p.presence.x === 'number');
+    others.sort((p,q) => {
+      const a = (num(p.presence.x,-150,150)-me.x)**2 + (num(p.presence.z,-150,150)-me.z)**2;
+      const b = (num(q.presence.x,-150,150)-me.x)**2 + (num(q.presence.z,-150,150)-me.z)**2;
+      return a - b;
+    });
+    const keep = new Set();
+    for(const p of others.slice(0, MAX_AVATARS)){
+      keep.add(p.peer);
+      const pr = p.presence;
+      const name = cleanName(pr.n), lv = lvOf(pr.lv);
+      const tx = num(pr.x,-150,150), ty = num(pr.y,2,70,2) - 2, tz = num(pr.z,-150,150), ry = num(pr.r,-1000,1000);
+      let a = avatars.get(p.peer);
+      if(!a){
+        a = makeAvatar(name);
+        a.group.position.set(tx, ty, tz); a.group.rotation.y = ry;
+        scene.add(a.group); avatars.set(p.peer, a);
+      }
+      a.tx = tx; a.ty = ty; a.tz = tz; a.ry = ry;
+      if(a.name !== name || a.lv !== lv) drawLabel(a, name, lv);
+    }
+    for(const [id,a] of avatars){
+      if(!keep.has(id)){ removeAvatar(a); avatars.delete(id); }
+    }
+  }
+  FRONTIER_HOOKS.mpFrame = function(delta){
+    if(!avatars.size) return;
+    const k = Math.min(1, delta * 10);
+    for(const a of avatars.values()){
+      const g = a.group;
+      const dx = a.tx - g.position.x, dz = a.tz - g.position.z;
+      if(dx*dx + dz*dz > 400){ g.position.set(a.tx, a.ty, a.tz); g.rotation.y = a.ry; continue; }
+      g.position.x += dx * k; g.position.y += (a.ty - g.position.y) * k; g.position.z += dz * k;
+      let d = a.ry - g.rotation.y;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      g.rotation.y += d * k;
+    }
+  };
+  FRONTIER_HOOKS.drawPeers = function(ctx, ox, oz, scale){
+    for(const p of peersNow){
+      if(p.isMe || p.kind !== 'viewer' || !p.presence || typeof p.presence.x !== 'number') continue;
+      const px = ox + num(p.presence.x,-150,150)*scale, pz = oz + num(p.presence.z,-150,150)*scale;
+      ctx.beginPath(); ctx.arc(px, pz, 4, 0, 6.283);
+      ctx.fillStyle = rankFor(p.presence.lv).color; ctx.fill();
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+    }
+  };
+
+  // ---------- painel X e contador ----------
+  const countOnline = () => Math.max(1, peersNow.filter(p => p.kind === 'viewer' && (!p.isMe || p.sameTab)).length);
+  function updateHud(){ const el = $('onlineHud'); if(el) el.textContent = String(countOnline()); }
+  function renderOnline(){
+    const list = $('onlineList'), status = $('onlineStatus');
+    if(!list || !status) return;
+    if(!room) status.textContent = 'Modo solo: o online só funciona para quem está logado no Claude e foi convidado para esta página (quem entra só por link público joga sozinho).';
+    else if(!room.connected()) status.textContent = 'Conectando...';
+    else status.textContent = countOnline() + ' jogador(es) online agora.';
+    list.textContent = '';
+    const me = yawObject ? yawObject.position : { x:0, z:0 };
+    const rows = [{ name:cleanName(playerName), lv:myLevel(), zn:zoneCode(), you:true, d:0 }];
+    for(const p of peersNow){
+      if(p.isMe || p.kind !== 'viewer') continue;
+      const pr = p.presence || {};
+      rows.push({ name:cleanName(pr.n), lv:lvOf(pr.lv), zn:(ZONES[pr.zn] ? pr.zn : 'campo'), you:false,
+        d:Math.round(Math.hypot(num(pr.x,-150,150)-me.x, num(pr.z,-150,150)-me.z)) });
+    }
+    rows.sort((a,b) => (b.you?1:0) - (a.you?1:0) || b.lv - a.lv);
+    for(const r of rows){
+      const rk = rankFor(r.lv);
+      const row = document.createElement('div'); row.className = 'panelItem'; row.style.borderLeftColor = rk.color;
+      const ic = document.createElement('div'); ic.className = 'ic'; ic.style.background = rk.color;
+      const info = document.createElement('div'); info.className = 'info';
+      const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = r.name + (r.you ? ' (você)' : '');
+      const rar = document.createElement('div'); rar.className = 'rar';
+      rar.textContent = rk.name + ' · Nv. ' + r.lv + ' · ' + ZONES[r.zn] + (r.you ? '' : ' · ' + r.d + 'm');
+      rar.style.color = rk.color;
+      info.append(nm, rar); row.append(ic, info); list.appendChild(row);
+    }
+  }
+  FRONTIER_HOOKS.renderOnline = renderOnline;
+
+  // ---------- presença ----------
+  function myState(){
+    const p = yawObject.position;
+    return { n:cleanName(playerName), lv:myLevel(), x:+p.x.toFixed(2), y:+p.y.toFixed(2), z:+p.z.toFixed(2), r:+yawObject.rotation.y.toFixed(2), zn:zoneCode() };
+  }
+  function pushPresence(){
+    if(!room || !yawObject) return;
+    const st = myState(), key = JSON.stringify(st);
+    if(key === lastSent) return;
+    lastSent = key;
+    room.presence(st).catch(() => {});
+  }
+  async function connectRoom(){
+    if(typeof claude === 'undefined' || !claude || !claude.use) return;
+    try{ room = await claude.use('room'); }catch(e){ room = null; }
+    if(!room){ if(activePanel === 'online') renderOnline(); return; }
+    room.onPeers(ch => {
+      peersNow = ch.peers;
+      syncAvatars(); updateHud();
+      if(activePanel === 'online') renderOnline();
+    }, () => {
+      room = null; peersNow = []; syncAvatars(); updateHud();
+      if(activePanel === 'online') renderOnline();
+    });
+    room.onConnection(() => { if(activePanel === 'online') renderOnline(); }, () => {});
+    pushPresence();
+  }
+  setInterval(pushPresence, 100);
+  setInterval(() => { if(activePanel === 'online') renderOnline(); }, 1000);
+
+  // ---------- aviso de versão nova ----------
+  function doReload(){ try{ autoSave(); }catch(e){} location.reload(); }
+  function showUpdate(notes){
+    if($('updBanner')) return;
+    const el = document.createElement('div'); el.id = 'updBanner';
+    el.style.cssText = 'position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:90;max-width:92vw;padding:12px 16px;border-radius:14px;background:rgba(5,10,18,.96);border:1px solid rgba(34,211,238,.55);color:#fff;font:600 13px system-ui,Arial,sans-serif;box-shadow:0 16px 50px rgba(0,0,0,.5);display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center';
+    const msg = document.createElement('span');
+    const now = document.createElement('button'), later = document.createElement('button');
+    const style = 'border:0;border-radius:9px;padding:7px 11px;font-weight:800;cursor:pointer;color:#fff;';
+    now.style.cssText = style + 'background:linear-gradient(135deg,#22d3ee,#6366f1)'; now.textContent = 'Atualizar agora';
+    later.style.cssText = style + 'background:rgba(255,255,255,.12)'; later.textContent = 'Depois';
+    el.append(msg, now, later); document.body.appendChild(el);
+    let secs = 30;
+    const label = () => { msg.textContent = '🔄 Nova versão do FRONTIER disponível' + (notes ? ': ' + notes : '') + '. Atualizando em ' + secs + 's (seu progresso é salvo).'; };
+    label();
+    const timer = setInterval(() => { secs--; if(secs <= 0){ clearInterval(timer); doReload(); } else label(); }, 1000);
+    now.onclick = () => { clearInterval(timer); doReload(); };
+    later.onclick = () => { clearInterval(timer); msg.textContent = '🔄 Nova versão disponível. Atualize quando quiser.'; later.remove(); };
+  }
+  async function watchVersion(){
+    if(typeof claude === 'undefined' || !claude || !claude.use) return;
+    let db = null;
+    try{ db = await claude.use('db'); }catch(e){ db = null; }
+    if(!db) return;
+    try{
+      db.doc('meta/version').onSnapshot(snap => {
+        if(!snap || !snap.exists) return;
+        const d = snap.data() || {};
+        const latest = Number(d.latest);
+        if(Number.isFinite(latest) && latest > BUILD_VERSION) showUpdate(String(d.notes || '').replace(/[\u0000-\u001f]/g,' ').slice(0,140));
+      }, () => {});
+    }catch(e){}
+  }
+
+  connectRoom();
+  watchVersion();
+})();
+})();
+</script>
+</body>
+</html>
+
+</body></html>
